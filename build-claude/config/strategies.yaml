@@ -1,0 +1,16 @@
+# 戦略レジストリ（共通仕様 §4.1 の既定値。最適化禁止）
+strategies:
+  margin_bucket_long:
+    status: research        # research -> backtest_passed -> paper -> live -> paused/retired
+    capital_share: 0.2
+    max_positions: 20
+    params:
+      markets: [prime, standard]
+      min_listed_days: 365
+      turnover_window: 60
+      min_avg_turnover: 100000000
+      lookback_weeks: 4
+      n_buckets: 5
+      max_names: 20
+      holding_days: 20
+      limit_pct: 0.005

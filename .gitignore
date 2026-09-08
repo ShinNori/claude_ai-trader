@@ -1,0 +1,9 @@
+﻿logs/
+results/
+__pycache__/
+*.pyc
+.env
+*.sqlite
+*.sqlite-journal
+.pytest_cache/
+

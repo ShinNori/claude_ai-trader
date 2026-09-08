@@ -1,0 +1,7 @@
+.env
+__pycache__/
+.pytest_cache/
+.venv/
+*.duckdb*
+results/**/trades.csv
+results/**/equity.csv

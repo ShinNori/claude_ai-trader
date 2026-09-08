@@ -1,0 +1,7 @@
+margin_bucket_long:
+  version: v1
+  holding_days: 20
+  limit_pct: 0.005
+  max_candidates: 20
+  min_turnover: 100000000
+  status: research
