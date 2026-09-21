@@ -1,0 +1,106 @@
+{
+  "mode": "strict_validity_fixture_v1",
+  "source_origin": "offline_fixture",
+  "input": {
+    "mode": "strict_input_v1",
+    "source_origin": "offline_fixture",
+    "as_of": "2026-09-12T06:50:00+09:00",
+    "expected_codes": [
+      "0001"
+    ],
+    "source_documents": [
+      {
+        "id": "artificial-example",
+        "sha256": "8d022ef55a1fa924c642b7b3d60a38d23f7d16da59400d2ea3f32bb48e992984",
+        "payload": {
+          "prices": {
+            "0001": {
+              "code": "0001",
+              "price_at": "2026-09-11T15:30:00+09:00",
+              "selected_basis": "RAW",
+              "raw": {
+                "open": 100,
+                "high": 110,
+                "low": 90,
+                "close": 105,
+                "volume": 1000
+              },
+              "adjusted": null,
+              "adjustment_contract": null
+            }
+          },
+          "publications": {
+            "0001": {
+              "code": "0001",
+              "publication_at": "2026-09-11T16:30:00+09:00",
+              "estimated": false
+            }
+          },
+          "lots": {
+            "0001": {
+              "code": "0001",
+              "lot_size": 100
+            }
+          },
+          "events": {
+            "0001": {
+              "code": "0001",
+              "next_earnings_at": null,
+              "margin_regulated": false
+            }
+          }
+        }
+      }
+    ],
+    "sources": {
+      "prices": {
+        "0001": {
+          "document_id": "artificial-example",
+          "pointer": "/prices/0001"
+        }
+      },
+      "publications": {
+        "0001": {
+          "document_id": "artificial-example",
+          "pointer": "/publications/0001"
+        }
+      },
+      "lots": {
+        "0001": {
+          "document_id": "artificial-example",
+          "pointer": "/lots/0001"
+        }
+      },
+      "events": {
+        "0001": {
+          "document_id": "artificial-example",
+          "pointer": "/events/0001"
+        }
+      }
+    }
+  },
+  "validity_documents": [
+    {
+      "id": "artificial-period-lots",
+      "sha256": "be8b261315746eca37ee4ad490e7830cade77dc52039cb1d0acec7bbc8e74a22",
+      "payload": {
+        "group": "lots",
+        "code": "0001",
+        "record_sha256": "637cb0d97fcc5281cdbbd278a5b392150ad21e1def6bf614c1d5557993d351f5",
+        "valid_from": "2026-09-10T00:00:00+09:00",
+        "valid_until": "2026-09-13T00:00:00+09:00"
+      }
+    },
+    {
+      "id": "artificial-period-events",
+      "sha256": "f40e4cf4bc9cc5a1f3b3799d467837f17bda613b25f3f6375936360df01cdd5d",
+      "payload": {
+        "group": "events",
+        "code": "0001",
+        "record_sha256": "89d0ec1b85e3300cd81e50da7ff3930fd60cf4a15d83a45992632a364097cde5",
+        "valid_from": "2026-09-10T00:00:00+09:00",
+        "valid_until": "2026-09-13T00:00:00+09:00"
+      }
+    }
+  ]
+}

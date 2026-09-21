@@ -1,9 +1,24 @@
 """Legacy v1 adapter implementing the shared contract; live service unverified."""
+import math
 import os
 import warnings
 import pandas as pd
 import requests
-from .db import init,connect
+from .db import init,connect,require_data_mode
+
+
+def _finite_number(value):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError('J-Quants格納予定の数値を確認できません')
+    try:
+        converted = float(value)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError('J-Quants格納予定の数値を確認できません') from None
+    if not math.isfinite(converted):
+        raise ValueError('J-Quants格納予定の数値を確認できません')
+    return value
 
 class JQuantsClient:
     base = 'https://api.jquants.com/v1'
@@ -12,27 +27,46 @@ class JQuantsClient:
         if not refresh_token:
             raise ValueError('JQUANTS_REFRESH_TOKEN が未設定です。合成データへ自動代替しません。')
         self.session = session or requests.Session()
-        response = self.session.post(self.base+'/token/auth_refresh',params={'refreshtoken':refresh_token},timeout=30)
+        try:
+            response = self.session.post(self.base+'/token/auth_refresh',params={'refreshtoken':refresh_token},timeout=30)
+        except requests.RequestException:
+            raise RuntimeError('J-Quants認証通信に失敗しました（応答本文・トークンは非表示）') from None
         if response.status_code != 200:
             raise RuntimeError(f'J-Quants認証失敗: HTTP {response.status_code}（応答本文・トークンは非表示）')
-        token = response.json().get('idToken')
-        if not token:
+        try:
+            payload = response.json()
+        except (requests.exceptions.JSONDecodeError, ValueError):
+            raise RuntimeError('J-Quants認証応答をJSONとして確認できません') from None
+        if not isinstance(payload, dict):
+            raise RuntimeError('J-Quants認証形式が想定v1と一致しません')
+        token = payload.get('idToken')
+        if not isinstance(token, str) or not token.strip():
             raise RuntimeError('J-Quants認証形式が想定v1と一致しません')
         self.headers = {'Authorization':f'Bearer {token}'}
 
     def rows(self, endpoint, key, **params):
         rows, seen = [], set()
         while True:
-            r = self.session.get(self.base+endpoint,headers=self.headers,params=params,timeout=60)
+            try:
+                r = self.session.get(self.base+endpoint,headers=self.headers,params=params,timeout=60)
+            except requests.RequestException:
+                raise RuntimeError('J-Quants取得通信に失敗しました（応答本文・認証情報は非表示）') from None
             if r.status_code != 200:
-                raise RuntimeError(f'J-Quants取得失敗: {endpoint} HTTP {r.status_code}')
-            payload = r.json()
-            if not isinstance(payload.get(key),list):
-                raise ValueError(f'想定v1形式と不一致: {key}')
+                raise RuntimeError(f'J-Quants取得失敗: HTTP {r.status_code}（応答本文・認証情報は非表示）')
+            try:
+                payload = r.json()
+            except (requests.exceptions.JSONDecodeError, ValueError):
+                raise RuntimeError('J-Quants取得応答をJSONとして確認できません') from None
+            if not isinstance(payload, dict) or not isinstance(payload.get(key),list):
+                raise ValueError('取得応答が想定v1形式と一致しません')
+            if any(not isinstance(row, dict) for row in payload[key]):
+                raise ValueError('取得応答が想定v1形式と一致しません')
             rows.extend(payload[key])
             token = payload.get('pagination_key')
-            if not token:
+            if token is None or token == '':
                 return rows
+            if not isinstance(token, str):
+                raise ValueError('Pagination key invalid')
             if token in seen:
                 raise ValueError('Pagination key repeated')
             seen.add(token); params['pagination_key'] = token
@@ -42,9 +76,7 @@ def fetch(home, start, end, client=None):
         raise ValueError('Invalid period')
     init(home)
     with connect(home) as con:
-        mode = con.execute("SELECT value FROM provenance WHERE key='data_mode'").fetchone()
-        if mode and mode[0]=='synthetic':
-            raise ValueError('合成データと実データは混在不可。別のAI_TRADER_HOMEを指定してください。')
+        require_data_mode(con, 'jquants')
     c = client or JQuantsClient(os.environ.get('JQUANTS_REFRESH_TOKEN'))
     params = {'from':str(start),'to':str(end)}
     prices = c.rows('/prices/daily_quotes','daily_quotes',**params)
@@ -61,15 +93,19 @@ def fetch(home, start, end, client=None):
     def price_row(r):
         adjusted = all(r.get('Adjustment'+key) is not None for key in ('Open','High','Low','Close'))
         prefix = 'Adjustment' if adjusted else ''
-        return dict(code=str(r['Code']),date=r['Date'],open=r[prefix+'Open'],high=r[prefix+'High'],
-                    low=r[prefix+'Low'],close=r[prefix+'Close'],volume=r.get('AdjustmentVolume',r.get('Volume')),
-                    turnover=r['TurnoverValue'],adj_factor=r.get('AdjustmentFactor',1))
+        return dict(code=str(r['Code']),date=r['Date'],open=_finite_number(r[prefix+'Open']),
+                    high=_finite_number(r[prefix+'High']), low=_finite_number(r[prefix+'Low']),
+                    close=_finite_number(r[prefix+'Close']),
+                    volume=_finite_number(r.get('AdjustmentVolume',r.get('Volume'))),
+                    turnover=_finite_number(r['TurnoverValue']),
+                    adj_factor=_finite_number(r.get('AdjustmentFactor',1)))
     px = pd.DataFrame([price_row(r) for r in prices])
     estimated = any(not r.get('PublishedDate') and not r.get('PublishDate') for r in margin)
     mw = pd.DataFrame([dict(code=str(r['Code']),date=r['Date'],
          publish_date=r.get('PublishedDate') or r.get('PublishDate') or (pd.Timestamp(r['Date'])+pd.Timedelta(days=4)).date(),
-         long_balance=r['LongMarginTradeVolume'],short_balance=r['ShortMarginTradeVolume']) for r in margin])
-    ix = pd.DataFrame([dict(name='TOPIX',date=r['Date'],close=r['Close']) for r in index])
+         long_balance=_finite_number(r['LongMarginTradeVolume']),
+         short_balance=_finite_number(r['ShortMarginTradeVolume'])) for r in margin])
+    ix = pd.DataFrame([dict(name='TOPIX',date=r['Date'],close=_finite_number(r['Close'])) for r in index])
     ca = pd.DataFrame([dict(date=r['Date'],is_business_day=str(r['HolidayDivision'])=='1') for r in calendar])
     if px[['open','high','low','close']].isna().any().any():
         raise ValueError('価格欠損あり。休止銘柄の処理を検証してから取り込んでください。')
@@ -80,6 +116,7 @@ def fetch(home, start, end, client=None):
     with connect(home) as con:
         con.execute('BEGIN')
         try:
+            require_data_mode(con, 'jquants')
             for table,frame in [('listed',li),('prices_daily',px),('margin_weekly',mw),('index_daily',ix),('calendar',ca)]:
                 con.register('incoming',frame)
                 con.execute(f'INSERT OR REPLACE INTO {table} SELECT * FROM incoming')
@@ -88,8 +125,12 @@ def fetch(home, start, end, client=None):
             con.execute("INSERT OR REPLACE INTO provenance VALUES ('api_contract','legacy-v1-unverified')")
             con.execute("INSERT OR REPLACE INTO provenance VALUES ('publication_estimated',?)",[str(estimated)])
             con.execute('COMMIT')
-        except Exception:
-            con.execute('ROLLBACK'); raise
+        except BaseException:
+            try:
+                con.execute('ROLLBACK')
+            except BaseException:
+                pass
+            raise
     if estimated:
         warnings.warn('共通仕様の基準日+4暦日を公表日の推定値に使用。研究用に限定してください。')
     if li.listed_date.isna().any():

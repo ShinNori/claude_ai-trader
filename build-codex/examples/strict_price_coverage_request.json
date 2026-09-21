@@ -1,0 +1,13 @@
+{
+  "start": "2026-09-11",
+  "end": "2026-09-11",
+  "expected_pages": [
+    "artificial-example"
+  ],
+  "expected_records": [
+    {
+      "code": "0001",
+      "date": "2026-09-11"
+    }
+  ]
+}

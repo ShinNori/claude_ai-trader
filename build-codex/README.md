@@ -305,3 +305,1149 @@ L02（A、TRADE/CSVの2件）は後着PENDINGがあるとSNAPSHOT前replayが初
 
 [独立レビュー報告・17件の内訳](OPS_V035_REVIEW.md)／[採用契約(a)〜(d)を反映した改訂案v1.1](../../共通仕様_フェーズ2_改訂案_v1.1.md)／[追加反証](tests/test_ops_v035_review.py)／[次回Claudeへの依頼](Claude引き渡しプロンプト.md)。ops・既存テスト・共通仕様本文は未変更。
 確認開始：2026-09-09 05:58 JST、終了：2026-09-09 06:03 JST。[Claude引き渡しプロンプト.md](Claude引き渡しプロンプト.md) 保存済み、未送信。
+
+### 2026-09-09 自動連携レビュー（開発ループとは別枠）
+
+受領版watch_handoff.ps1/pingpong.ps1をレビューし、[H01〜H18の指摘・採否・運用規則案](PINGPONG_REVIEW.md)を保存。PS5.1でwatchの構文0件、pingpongの構文エラー1件を確認。隔離DryRun、14件の現象確認、cmdリダイレクトを実測した。[検証出力](PINGPONG_EVIDENCE.txt)・[再現スクリプト](review_handoff.ps1)。14件は欠陥を含む観測確認で、製品の合格件数ではない。
+
+Claude向けMDに運用5規則を追記。途中で別担当によるH01修正と新エンジン追加があり、受領版の評価と変更後の版は区別する。現行変更版の再検証は別枠。[自動連携専用のClaude依頼](AUTOMATION_CLAUDE_HANDOFF.md)を保存し、投資開発側Bへは混ぜない。tools/・AGENTS.mdは本セッションでは未編集、実LLM・通知・Git・常駐起動なし。
+
+### 2026-09-09 第10回：ops v0.3.6の指定修正確認・独立レビュー追補
+
+**指定全体402件＝401 passed / 1 failed in 11.29s、skip/xfailなし。全件通過ではない。** 元388件と共有作業ツリーのN系列7件は通過。本セッションのO系列7件は6通過・1失敗。追加前の395件も10.83秒で全通過を実測した。
+
+L03期待値・actor試験日時・migration接続closeは再読時点で既に反映されていたため、その変更を維持して検証した。本セッションが既存修正やN系列を作成したとは扱わない。O01は09:00保留→11:00作成通知へ10:00APPLYを受理した後、replay(10:00)が通知欠落で停止するA指摘。受理時の現金・保有は正しいが時点再生が不能。実装を修正せず反例を残した。
+
+[第10回追補報告](OPS_V036_FOLLOWUP_REVIEW.md)・[追加7試験](tests/test_ops_v036_followup_review.py)・[採用(e)〜(g)を追記した改訂案](../../共通仕様_フェーズ2_改訂案_v1.1.md)。実口座・実LLM・LINE操作なし。次の[Claude依頼](Claude引き渡しプロンプト.md)はO01修正・監査/過去時点の文書明確化・再検証。
+
+確認開始：2026-09-09 06:29 JST、終了：2026-09-09 06:40 JST。Claude向けBと履歴を保存済み。依頼送信・CLI起動はしていない。
+
+### 2026-09-09 06:43 JST：v0.3.6 再確認
+
+ユーザーの「v0.3.6を実施して」に対応し、共有作業ツリーの指定修正・契約追記・Claude向け依頼を確認した。ops/で指定全体を再実行し、**402件中401通過・O01のみ1失敗、11.28秒、skip/xfailなし**。元388件とN系列7件は通過し、O系列7件は6通過・1失敗。全件通過ではない。試験の弱体化やops本体の修正は行っていない。
+
+今回の実行は同梱Pythonへ試験用依存パスを追加し、pytest ../common/tests/phase2 ../build-codex/tests tests -q -p no:cacheprovider --tb=short（bytecode無効）で行った。合成一時台帳のみ使用。
+
+[追補レビュー・残課題O01](OPS_V036_FOLLOWUP_REVIEW.md)／[採用契約(e)〜(g)](../../共通仕様_フェーズ2_改訂案_v1.1.md)／[Claudeへの修正依頼](Claude引き渡しプロンプト.md)。既存の次依頼BはO01修正・文書明確化・独立再検証と一致しているため維持。今回の依頼送信・CLI起動は行っていない。確認開始06:40 JST、終了06:43 JST。自動連携作業とは別枠。
+
+### 2026-09-09 第11回：ops v0.3.7独立レビュー・時計依存フィクスチャ修正
+
+**最終430件＝428 passed / 2 failed in 11.43s、skip/xfailなし。全件通過ではない。** 既存411件はフィクスチャ修正後に全通過（10.27秒）。追加Q系列19件＝17通過・2失敗。
+
+common/tests/phase2/test_ledger.pyの通知作成にat=ATを渡す1行だけを変更し、全assertを含む他の行が不変であることを比較確認した。実行時刻が固定翌朝を超える失敗は修正前に再現済み。opsは未変更。
+
+O01は解消。残るQ09は解決前へ遡る後着訂正の訂正元欠落、Q10は解決前へ遡る通知状態変更の通知欠落で、受理後の時点再生が停止する日時契約の隙間（B）。通常の時刻順の訂正/取消、複数APPLY、部分約定の残予約、移行前後、cutover遮断等は通過。README第11回の指定3説明は実測と一致した。
+
+[独立レビュー・実測・指摘](OPS_V037_REVIEW.md)／[追加19試験](tests/test_ops_v037_review.py)／[採用(h)を追記した改訂案](../../共通仕様_フェーズ2_改訂案_v1.1.md)／[次のClaude依頼](Claude引き渡しプロンプト.md)。実台帳・実口座・実LLM・LINE操作なし。自分宛てB・自動連携toolsは変更していない。
+
+確認開始：2026-09-09 06:58 JST、終了：2026-09-09 07:07 JST。Claude向けBと履歴を保存。依頼送信・CLI起動はしていない。
+## 2026-09-09 第12回 Codex：ops v0.3.8独立レビュー
+
+Q09試験を採用済みの入力拒否契約へ更新（解決前拒否・残高/seq不変・同時刻受理）。既存442件全通過14.24秒。追加T系列15件を含む最終457件中453通過・4失敗11.57秒、skip/xfailなし。ops本体は未変更。
+
+- T06（A、3ケース）: EXPIREだけが参照する通知作成の合成欠損で、replay/再起動/migrate.checkからKeyErrorが漏れる。LedgerError/位置付きMigrationError契約未達。
+- T07（B、1ケース）: 10:00 APPLY後の時刻なし訂正とその09:00再訂正は受理されるが、09:00再生は対象c1欠落。時刻なし訂正の非先取りと有効時刻継承の契約決定が必要。
+- 部分合算/二重訂正/取消/SELL原価固定/時刻なし対象/移行前後/REJECTED遮断/EXPIRE列挙外非補完/cutover迂回拒否は通過。改訂案v1.1へ(i)(j)追記、共通仕様本文は未変更。
+- Claude試験R07のotherは実際は列挙内。R06のEXPIRED予約なしコメントは誤り（作成後の部分予約60120は維持）。コメント訂正を依頼。
+
+詳細：build-codex/OPS_V038_REVIEW.md。次はClaudeのT06修正・T07契約判断と対応・独立再検証。実口座/実LLM/LINE操作なし。自動連携とは別枠。
+[レビュー](OPS_V038_REVIEW.md) / [Claude向け依頼](Claude引き渡しプロンプト.md)
+
+終了時刻: 2026-09-09 08:21 JST
+次に渡す一文（コピー用）:
+```text
+ai-trader の作業フォルダで、build-codex/Claude引き渡しプロンプト.md を読み、「A. 固定プロンプト」と「B. 今回の依頼」に従い、ops v0.3.8レビューのT06（EXPIRE不明参照）の修正とT07（時刻なし訂正）の契約決定・対応および独立再検証を行ってください。
+```
+
+## 2026-09-09 第13回 Codex：ops v0.3.9独立レビュー
+
+T07を採用契約へ期待値更新。時刻なし訂正後09:00=1000000・10:00=964000、前倒し再訂正拒否と残高/seq不変、同時刻再訂正962000を確認。既存469件通過14.80秒、追加U系列18件を含む最終 **487件全件通過14.25秒、失敗/skip/xfailなし**。ops本体は読取のみ。
+
+U01 CSV直接/保留・TRADEの時刻あり/なし6通り、U02記録順と時刻の逆転2通り、U03通知状態/訂正対象不明の3経路ずつ、U04旧規則区間とマーカー後・実migrate --check・原本hash不変、U05cutover遮断を検証。作成中の試験で時刻なしCSVが直接適用されるとした誤前提は、既存保留規則のassertとAPPLY手順へ訂正した。
+
+改訂案(k)を追記。明示ID付き時刻なし訂正は対象の有効時刻を継承し、表示at=Noneを保持、先取りなし。T06解消も確認。新規実装不具合は今回範囲で検出なし。文書2点はClaudeへ明確化依頼: C01「旧規則対象外」はQ09比較であり有効時刻事前走査は全区間、C02対象ID省略は状態側で継承するが事前走査は解決しない（明示IDと同等の時点再生保証ではない）。公開APIに新しい入力制限は追加しない。
+
+詳細：build-codex/OPS_V039_REVIEW.md。次はClaudeの文書明確化・最終照合のみ。追加課題がなければ引き渡し不要として開発ループを閉じる。自動連携自身の稼働確認は別枠。実口座/実LLM/LINE操作なし。
+[レビュー](OPS_V039_REVIEW.md) / [Claude向け依頼](Claude引き渡しプロンプト.md)
+
+終了時刻: 2026-09-09 08:56 JST
+次に渡す一文（コピー用）:
+```text
+ai-trader の作業フォルダで、build-codex/Claude引き渡しプロンプト.md を読み、「A. 固定プロンプト」と「B. 今回の依頼」に従い、ops v0.3.9の独立レビュー結果・改訂案(k)の最終照合と、旧規則および訂正対象ID省略時の文書明確化を行ってください。
+```
+
+## 2026-09-09 第15回 Codex：順序4先行作成・保存先制約により停止
+
+依頼hash: d66f6b8f08889b3b7e516faf48471946dfa27ac695d60b5f694f208d0f92940d
+
+引き渡しMDのAと固定されたBを確認。仕様案の指定保存先である親フォルダは、この実行環境の書き込み許可範囲外で、approval policy=never により追加申請も不可。保存先変更の判断を [QUESTIONS.md](QUESTIONS.md) に記録し、質問時停止の指示に従って停止した。権限エラーが発生したという報告ではなく、環境に明示された制約による停止。
+
+仕様案・新規テスト2ファイルは未作成（作成テスト0件）。指定pytestは未実行であり、既存487件の結果は今回再確認していない。ops/・共通仕様本文・自分宛てMD・相手宛てBは未変更、publish未実行。実CLI・実LINE・実LLM・実口座への接続なし。作業未完了。
+
+| 開始(JST) | 終了(JST) | 作業 | 結果 |
+|---|---|---|---|
+| 2026-09-09 09:53（分単位） | 2026-09-09 09:53 | 第15回 順序4先行作成の事前確認 | 保存先制約をQUESTIONS.mdへ記録して停止。実装依頼は未公開 |
+
+## 2026-09-09 第15回再開：順序4先行作成・受入テスト書込拒否で停止
+
+依頼hash: `d2a6916137dfa9a9c10d8e10cc9a3c3665dcbf626c9293c8da7e0b14ff14cb32`
+
+A/B、設計書、共通仕様、既存APIと最新ops成果を確認。仕様案のbuild-codex保存承認を確認したが、受入テスト指定先common/tests/phase2/test_judges.pyへの書込がapply_patchとSet-Contentで拒否された。環境の書込制約としてQUESTIONS.mdに記録し停止。ACLの読取で原因は確定していない。既存ファイル・権限は変更していない。
+
+保存済み新規テスト0件。仕様案とテスト2ファイルは未作成。指定pytest未実行で、既存487件は今回未再確認。全件通過・先行作成完了とは扱わない。相手宛てB更新とpublishは未実行。
+
+Claudeへの調査メモ：公式資料でClaudeの--tools空文字とMCPの別制限、json外包のresult文字列、Codexの--output-schemaと--output-last-message、--jsonが実行イベントであることを確認。実CLIによる確認はしていない。審査のネットワーク禁止はツール側と推論通信を区別する必要がある。LINE再送は同一retry keyと本文を維持する設計が必要。
+
+公式根拠（2026-09-09参照）：https://code.claude.com/docs/en/cli-reference 、https://code.claude.com/docs/en/headless 、https://learn.chatgpt.com/docs/non-interactive-mode 、https://learn.chatgpt.com/docs/developer-commands?surface=cli 、https://developers.line.biz/en/docs/messaging-api/retrying-api-request/ 。楽天サイト・実口座・LINE・審査LLMへの操作なし。
+
+[未解決事項](QUESTIONS.md) / [Claude向け依頼（B未更新）](Claude引き渡しプロンプト.md)
+
+| 開始(JST) | 終了(JST) | 作業 | 結果 |
+|---|---|---|---|
+| 未取得（最初の時計確認09:58） | 2026-09-09 10:01 | 第15回 順序4先行作成の再開 | common/tests/phase2への書込拒否。質問記録して停止、公開なし |
+
+## 2026-09-09 第15回再開：順序4仕様案・先行受入テスト作成、pytest環境不足で検証停止
+
+依頼hash: `53336003d2af71265a2f1a18f9828acf2444666bb246bb7b5f17e9b05d4b453a`
+
+今回やったこと：保存先承認とcommon/tests/phase2の修復後、[共通仕様案v0.1](共通仕様_フェーズ2_順序4_修正提案_v0.1.md)、[judges受入テスト](../common/tests/phase2/test_judges.py)、[notify受入テスト](../common/tests/phase2/test_notify.py)を作成した。ops/・共通仕様本文・既存テストは変更していない。実口座・楽天サイト・LINE・実CLI・実審査LLMは呼んでいない。
+
+仕様案には公開APIの名前/引数/戻り値、CLI外包の抽出、Verdict検証と失敗分類、共通プロンプト、07:15締切、outboxと成功後SENT、月200通、STOP/RESUME、署名と本人認証、重複・逆順・期限後報告を記載した。約定ボタンだけならNEEDS_DETAILSで、数量/価格/手数料を推定しない。楽天URLはテスト専用の架空パスで、実リンク候補を選定していない。
+
+**作成数：test_judges.py 9関数・69パラメータケース、test_notify.py 23関数・47パラメータケース、合計116ケース。これはASTによる静的計数で、pytestの実測収集数ではない。両ファイルのast.parseとcompileは成功。** importを関数内に置き、Claude実装前は各ケースのImportErrorを失敗として測れる設計。新規テストにskip/xfailなし。
+
+### 検証の実測（環境で停止、合格扱いにしない）
+
+ops/で指定の全対象を `python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q --tb=no` で実行したが、既定同梱Pythonにpytestがなく終了1（`No module named pytest`）。過去の依存先を指定し、次の形でも実行を試みた：
+
+```powershell
+$env:PYTHONPATH='C:\Users\s\AppData\Local\Temp\ai-trader-review-deps'
+$env:PYTHONDONTWRITEBYTECODE='1'
+python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q -p no:cacheprovider --tb=short
+```
+
+結果は終了1、`No module named pytest.__main__; 'pytest' is a package and cannot be directly executed`。そのpytestサブディレクトリの読取はアクセス拒否。`python -m pip install --target build-codex/.test-deps pytest duckdb pyyaml requests --disable-pip-version-check --no-cache-dir` もpypi.orgへの通信がWinError 10013で失敗し、依存環境は未作成。ネットワーク制限・ACLを回避していない。
+
+**今回のpytest実測通過件数・失敗件数・収集件数は未取得（pytest起動前の環境エラー）。既存487件維持も未確認。新規116件が失敗したと実測報告することはできない。完了条件未達。** 先行テストのImportErrorを許容する条件とは別の、pytest自体が実行できない問題。[QUESTIONS.md](QUESTIONS.md)へ未解決事項を追記して停止した。
+
+### Claudeへ伝えたい点
+
+- Claudeは `claude -p --output-format json --max-turns 1 --tools ""`、MCPも別制限。stdoutは判定JSONそのものではなくresult文字列を持つ外包。本案はjson-schemaを使わないのでstructured_outputを混同しない。[CLI公式](https://code.claude.com/docs/en/cli-reference)、[出力公式](https://code.claude.com/docs/en/headless)。
+- Codexは `codex exec - --output-schema ... --output-last-message ... --sandbox read-only`。--jsonのイベント列を判定として解析しない。[OpenAI公式](https://learn.chatgpt.com/docs/non-interactive-mode)。引数は公式閲覧に基づき、ローカル実CLIでの互換試験は未実施。
+- ネットワーク禁止は審査ツールの任意通信と推論通信の区別が必要。read-onlyや計画フィールドだけでは秘密隔離の実証にならない。本ループはstubのみ。
+- risksは既存Verdictの文字列tupleを維持し、JSON配列から変換。構造化objectへ勝手にモデル変更しない。confidenceは表示/ゲートに使わない。
+- LINE retry keyは初回から同一内容に固定。送信成功と既読は異なる。詳細・一次資料は仕様案§6。並行処理/クラッシュ復旧等の後続独立試験も明記した。
+
+[Claude引き渡しプロンプト](Claude引き渡しプロンプト.md) のBは未更新、`publish --channel dev --agent claude` は未実行。自分宛て引き渡しMDと自動連携toolsも未変更。検証環境修復後、既存＋新規全対象の実測結果を保存してから最後にB更新・公開する。
+
+| 開始(JST) | 終了(JST) | 作業 | 結果 |
+|---|---|---|---|
+| 開始未取得（最初の時計確認2026-09-09 10:29） | 2026-09-09 10:36 | 第15回 順序4仕様案・先行テスト | 仕様案と116ケース作成、静的構文OK。pytest依存環境不足で実測不可、質問記録・公開停止 |
+
+## 2026-09-09 第16回：ops v0.4.0 全体実測、pytest 一時フォルダの環境エラーで停止
+
+依頼hash: `7bba4bf039099904b3c7b219c00077dbeff25f7fdade2f13ea3a54e07515c296`
+
+自分宛て引き渡し文書のAと固定されたBを確認し、ops/ で指定コマンドを変更せず実行した。
+
+```powershell
+python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q
+```
+
+Codex実測：**633件＝131 passed / 502 errors、終了コード1、65.52秒（pytest表示）。全件通過ではない。** 最終集計にfailed / skipped / xfailedの表示なし。pytest導入は確認できたが、tmp_pathのセットアップで `C:\Users\s\AppData\Local\Temp\pytest-of-s` の `os.scandir` が `PermissionError: [WinError 5] アクセスが拒否されました。` となった。実行PythonはCodex同梱runtime配下。大量出力がツール側で省略されたため、全502件の例外本文が同一かは未確認。実装の不具合502件とは扱わない。Claude環境の633 passedをCodex環境で再現できたとは報告しない。
+
+Bの環境エラー時停止規則に従い、[QUESTIONS.md](QUESTIONS.md)へ修復依頼を記録して停止した。一時フォルダの変更、ACL変更、別Pythonへの切替による迂回は行っていない。
+
+反証追加0件、失敗A/B分類未実施。独立レビューと仕様案v0.2への更新は未実施で、今回の完了条件は未達。Claudeへ伝えたい点：Codex sandboxからpytest既定一時フォルダを読み書きできる環境の修復後、指定コマンドから再開が必要。相手宛てBは更新せず、publishも未実行。ops/・共通仕様・既存テスト・自分宛て引き渡しMD・自動連携コードは編集していない。実口座・実LINE・実審査LLMの呼び出しなし。
+
+| 開始(JST) | 終了(JST) | 作業 | 結果 |
+|---|---|---|---|
+| 開始未取得（最初の時計確認2026-09-09 11:14） | 2026-09-09 11:15 | 第16回 ops v0.4.0 全体実測 | 131 passed / 502 errors。pytest一時フォルダのアクセス拒否を記録して停止、公開なし |
+
+## 2026-09-09 第16回：ops v0.4.0 独立レビュー（デスクトップ実測）
+
+導入済み同梱Pythonを許可済みユーザー環境で実行し、基準633件全通過（18.95秒）。独立反証49件を追加し、**最終682件＝667 passed / 15 failed in 17.13s、skip/xfailなし**。既存633件維持、追加34通過・15失敗（A13/B2）。全件通過ではない。実行場所ops/、python -B -m pytest ../common/tests/phase2 ../build-codex/tests tests -q -p no:cacheprovider --tb=short。
+
+[レビュー・指摘分類と再現](OPS_V040_REVIEW.md)／[追加49試験](tests/test_ops_v040_review.py)／[順序4仕様案v0.2](共通仕様_フェーズ2_順序4_修正提案_v0.2.md)／[Claudeへの修正依頼](Claude引き渡しプロンプト.md)。ops本体・既存試験・共通仕様本文は未変更。実LINE・実審査LLM・口座は未使用。
+
+共有ファイルに別Codex実行の11:15停止記録があるが、これは子CLI sandboxのpytest-of-sへのアクセス拒否（131 passed/502 errors）。今回の実測でその環境問題を解決したとは扱わない。QUESTIONS.mdの未解決記録は維持し、監視を再開しない。主な修正依頼は送信予算の並行処理・UNKNOWNとSENDINGの復旧・全ログの秘密値マスク等。自動連携autoのE系列は別枠。
+終了時刻: 2026-09-09 11:18 JST。Claude向け依頼を保存・公開。監視起動・実依頼送信はしていない。
+
+## 2026-09-09 第16回11:22再公開：許可済みbasetempで実測、runnerの保存先制約で停止
+
+依頼hash: `ac148c31b29d82253b7e87e42d317516418b2f414f10baf8992c9fbf58860fb1`
+
+ops/で指定どおり実行：
+`python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q -p no:cacheprovider --basetemp ../build-codex/.pytest-tmp`
+
+100%まで実行、終了コード1。進捗表示の失敗記号15件・エラー記号19件を確認。大量出力の省略により最終集計行（passed数・所要時間）は未取得であり、全件通過とは報告しない。test_runner.pyのsetupで、Dropbox配下のtmp_pathをinitialize_mock()に渡したため `aitrader/runner.py:105` が `RunError: 模擬実行先はDropbox外にしてください` を返した。指定一時フォルダはpytestには使用できたが、runnerの保存先条件に抵触した。
+
+依頼Bの環境エラー時停止規則に従い、[QUESTIONS.md](QUESTIONS.md)へDropbox外の利用可能な一時フォルダ設定・指定の確認を追記した。保存先チェックや試験の変更・別パスへの切替・再実行はしていない。独立レビュー未実施、本実行の反証追加0件、A/B分類未実施、仕様案更新なし。相手宛てB・自分宛てMD・ops/・共通仕様・自動連携コードを編集せず、publish未実行。実口座・LINE・実審査LLMは呼んでいない。完了条件未達。
+
+直前の「デスクトップ実測」節と追加49試験・仕様案v0.2・公開済みBは別実行の成果である。本実行による667 passed / 15 failedの再現とは扱わず、その成果を上書きしていない。Claudeへの連絡事項：sandbox内での全体実測にはrunnerのDropbox禁止と両立する一時フォルダが必要。
+
+| 開始(JST) | 終了(JST) | 作業 | 結果 |
+|---|---|---|---|
+| 2026-09-09 11:22（初回時計確認11:22:44、開始秒未取得） | 2026-09-09 11:23 | 第16回11:22再公開の指定pytest実測 | 終了1、Dropbox配下のmock初期化拒否。質問記録して停止、B更新・公開なし |
+
+## 2026-09-09 第17回：ops v0.4.1の既存696件全通過、反証保存の環境エラーで停止
+
+依頼hash: `6b0264f5fca45f796f38228ae3cf8da5b45e71a6798af55634ba1791db5644d2`
+
+Codex引き渡し文書のAと固定されたBを確認し、指定のops/で実測した。キャッシュとバイトコード生成を無効にし、一時フォルダはDropbox外の指定先を使用した。
+
+```powershell
+$env:PYTHONDONTWRITEBYTECODE='1'
+python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q -p no:cacheprovider --basetemp C:\Users\s\AppData\Local\Temp\ai-trader-pytest
+```
+
+**Codex実測：696 passed in 41.41s、終了コード0。既存696件は全件通過。failed/errors/skip/xfailなし。** Claudeの696件通過を今回のsandboxでも再現した。過去の11:15/11:23停止記録とは別の実測である。テスト・コード・条件の変更なしで通過した。
+
+設計書・共通仕様・ISSUES・Claude第17回成果・notify/judges・既存レビューを読み、追加反証36ケースを作成して保存しようとしたが、apply_patchが `build-codex/tests/test_ops_v041_review.py` に対して `Failed to write file`（終了コード1）を返した。Test-Path=Falseで未作成を確認。OSエラー詳細がないためACL原因とは断定しない。別手段での再保存、別保存先、ACL操作は行っていない。[QUESTIONS.md](QUESTIONS.md)へ保存環境の修復依頼を記録し、指示どおり停止した。
+
+**保存済み反証追加0件、追加反証の実測・失敗A/B分類なし。独立レビューは未完了。** 既存696件通過だけで今回の完了条件を満たしたとは扱わない。仕様案v0.2は前回の既存ファイルを読んだだけで今回未更新。automation READMEへの注意書きも未追加。相手宛てBは旧依頼のまま更新せず、publish未実行。
+
+Claudeへ伝えたい点（静的所見、未実証）：`_mask_deep`は辞書値を再帰処理するがキーはそのまま。旧月UNKNOWN再試行後のmonth更新・新月予算判定、初回SENDING断でattemptsが空のときの24時間制限、同一instanceの実行中claimの即時回収、範囲外timestampの例外畳み込みに追加検証が必要。これらは未保存・未実行の反証候補でありA指摘確定ではない。V10時刻境界・タイムゾーン・時刻欠損、署名優先と重複/CONFLICTも追加検証が残る。
+
+再開後は既存実測結果を履歴として保ち、保存環境が使えることを確認した上で反証追加・全体実測・仕様案更新・注意書き・履歴を完成させ、最後に[Claude引き渡しプロンプト](Claude引き渡しプロンプト.md)のB更新とdev公開を行う。今回はops/・共通仕様・既存試験・自分宛てMD・相手宛てB・自動連携コードは未変更。実口座・証券サイト・LINE・実審査LLMは呼んでいない。
+
+| 開始(JST) | 終了(JST) | 作業 | 結果 |
+|---|---|---|---|
+| 2026-09-09 17:04（最初の時計確認17:04:10） | 2026-09-09 17:07 | 第17回 ops v0.4.1 Codex実測と独立レビュー開始 | 既存696件全通過41.41秒。追加反証ファイル保存失敗で質問記録・停止。反証追加0件、B更新・公開なし |
+# 2026-09-11 Codex 再開・ログマスク修正
+
+保存先の権限修復後、新規反証6ケースを保存。初回702件中700通過・2失敗（キー名の秘密値漏出、A2/B0）。ユーザーのCodex継続指示に基づきopsのログマスクを修正し、**702 passed in 15.95s**、skip/xfailなし。第17回全体のレビューは継続中で、Claudeによる独立確認は未実施。[再開記録と残作業](OPS_V041_RESUME.md)。
+
+## 2026-09-11 04:28 JST Codex単独継続
+
+異常な巨大timestampでバッチ全体が停止する不具合を反証し、opsで修正。今回13ケース追加（累計19）。修正前の追加群は17通過・2失敗＝A2/B0、修正後全体 **715 passed in 16.13s**。既存試験の弱体化なし。時刻のUTC境界と署名検証→重複判定の順序も確認。[詳細・残作業](OPS_V041_RESUME.md)、[採用契約を反映した仕様案§8](共通仕様_フェーズ2_順序4_修正提案_v0.2.md)。Claudeの独立レビューは未実施、引き渡し不要。
+
+## 2026-09-11 Codex統合検証
+
+追加47件を含む **743 passed in 18.82s**、skip/xfailなし。月境界でUNKNOWNの予約月が移る不具合、ログのキー漏出・衝突、範囲外時刻の例外を修正済み。Claudeによる独立再レビューではない。実通信は未実施。
+
+結果・失敗分類・実行条件・残作業: [ops v0.4.1再開結果](OPS_V041_RESUME.md)。
+
+## 2026-09-11 08:10 JST — 主系と審査モジュールの模擬接続
+
+明示された両AIの模擬応答をops.judgesで検証し、既存ゲート・模擬台帳へ渡すreview_runnerを追加。追加11件を含む **754 passed in 20.14s**、skip/xfailなし。実AI・LINE・発注なし。両見張りは無効化したままCodex単独で実施。
+
+API・入力形式・締切・限界・次工程は [RUNNER.md](RUNNER.md) 末尾。通知器の主系結合と完全な復旧は未実装。
+
+## 2026-09-11 08:13 JST — 並列レビュー完了
+
+サブエージェント3体でレビュー・設計・反証を並行し、審査入力固定、07:00前審査拒否、成果物の秘密値マスクを修正。追加21件を含む **775 passed in 22.77s**、skip/xfailなし。
+
+詳細は [RUNNER.md](RUNNER.md) 末尾。次工程の [通知器結合設計](NOTIFY_INTEGRATION_PLAN.md) を追加。両見張り停止・Codex単独方針を維持。実AI・LINE・発注なし。
+
+## 2026-09-11 08:23 JST — 通知準備2段階の統合完了
+
+3並列（実装・独立試験・レビュー）で模擬候補カードと任意の実行状態カードを実装。追加34件を含む **809 passed in 31.31s**、skip/xfailなし。原本DB・成果物hash・台帳との照合、固定入力、未送信・予約不増、未承認注文条件の非表示を検証。
+
+APIと未実装範囲、次工程は [通知器結合設計](NOTIFY_INTEGRATION_PLAN.md) 末尾。enqueue/flush・実配信は未実装。両見張りDisabled維持、Codex単独で継続。段階報告時のCodexアカウント週枠は使用7%・残93%。85%超過停止の設定は維持。Claude引き渡し不要。
+
+## 2026-09-11 08:31 JST — キュー・選択API統合
+
+通知の公開読取、固定計画からのstub enqueue、選択key限定flush APIを実装。追加52件を含む **861 passed in 36.93s**、skip/xfailなし。サブエージェント3体で実装・反証・レビューを分担。初期境界反証5失敗は修正済み。
+
+[通知器結合設計](NOTIFY_INTEGRATION_PLAN.md)にAPI・部分登録回復・送信履歴表示・次工程を記録。主系からflushを呼ぶ接続とSTOP/07:15制御は未実装で、実送信・見張り起動は行っていない。アカウント共通Codex週枠は使用10%・残90%。Claude引き渡し不要。
+
+## 2026-09-11 08:41 JST — 模擬配信と復旧の検証
+
+前段階から48件追加し、全体 **909 passed in 82.63s**。内訳は模擬配信15、時刻5、保存障害回復5、合成デモ8、選択照合15。デモの既存フォルダへの意図しない作成を修正し、未作成の専用フォルダだけを受け付ける。予約・模擬成功・実送信なしを区別して保存する。
+
+その後、審査確定前のキュー登録・模擬送信・台帳修復を3件反証（A3）し、固定原本のrunner時刻で拒否するよう修正。時刻試験4/4通過10.72秒、明示的なrun限定台帳修復8/8通過15.84秒。この追加12件を含む全体試験は次の統合段階で行う。
+
+API・解釈・制限は [通知器結合設計](NOTIFY_INTEGRATION_PLAN.md)。使用量はアカウント共通週枠15%・残85%。今回の継続上限30%、両見張り停止、Codex単独、実通信禁止を維持。Claude引き渡し不要。
+
+## 2026-09-11 08:44 JST — 復旧・デモ・時刻検証の統合
+
+追加31件を含む全体 **940 passed in 101.25s**、skip/xfailなし。明示復旧8、審査時刻4、模擬デモ配信10、キュー再観測時刻4、ロック5。キュー再観測の時刻巻戻しA3を修正し個別4/4通過10.55秒。主系の3操作が共通ロックを保持し、例外後解放することも検証。外部からのNotifier直接操作はこのロックの保護外なので専用homeへ混在させない。
+
+[PowerShellでのデモ手順](MOCK_DEMO.md)を追加。既定は未送信、明示フラグの場合だけ模擬成功を記録し、実送信は行わない。文書のコマンドを実測済み。[日次結合の実装範囲](PHASE2_INTEGRATION.md)も更新。手作り候補からのデモと、市場DBの実生成器からの結合は区別している。
+
+次の反証で締切後レポートの時刻巻戻しが見つかったため修正継続中。940件通過はこの未追加反証を解決した意味ではない。使用量の直近公式値は16%・残84%。終了時刻08:44 JST、Claude引き渡し不要。
+
+## 2026-09-11 08:56 JST — 実生成経路と読取診断
+
+[共通合成市場からの実行](MOCK_DEMO.md)を追加。手作り候補ではなく実戦略→候補生成器→両模擬審査→ゲート→未送信キューを接続。seed42は生成5件、承認2件、日次上限拒否3件、予約478856円。独立4件と入力15件が通過。実市場での投資成績・実AIの審査結果ではない。
+
+締切後の観測時刻巻戻しA5を修正（6/6）。価格鮮度では生成器A1、runnerの欠損等での承認A5と生例外A3を修正した。旧テストの合成価格省略を補い、欠損試験は明示削除して維持。更新前fixtureを読み込んだ全体実行は121失敗/857通過121.41秒。更新後全体は5失敗/985通過149.93秒で、残り5件も状態通知専用銘柄9999の価格省略Bだった。同ファイルへ価格を補い14/14通過19.65秒。最終全体実測は次の統合段階に記録する。
+
+[停止したrunの診断と復旧案](RUNNER_RECOVERY_PLAN.md)を追加。診断は閉じたDBだけを読み、修復しない。WAL/SHM生成A8を修正し、稼働中DBは保留する。重複通知作成・不正遷移の誤ったCOMPLETE表示A2も修正。正常/改ざん/稼働中を含む15件通過21.54秒、入力境界25件通過5.69秒。入力試験初回4件は注入用接続を閉じていないBであり、停止DBにして再検証した。
+
+使用量の直近公式値は22%・残78%。今回上限30%、両見張り停止、Codex単独、実通信禁止を維持。Claude引き渡し不要。
+
+## 2026-09-11 08:59 JST — 1,025件の全体統合完了
+
+**1025 passed, 15 warnings in 146.33s**、終了コード0、failed/errors/skip/xfailなし。940件時点から追加85件を統合した。15警告は合成市場の一単元予算不足による正当な除外で、条件を変更して消していない。価格fixtureの修正後は既存試験も全通過。
+
+[模擬シグナル画面の作り方](MOCK_DEMO.md)を追加し、承認2件・見送り3件の静的HTMLを実生成した。表示の独立7件を含み、未承認条件の非表示・改ざん時抑止・外部参照なし・ファイル不変を確認。実データ・実配信・発注はない。
+
+残工程の検討資料: [受入ギャップと優先順](PHASE2_READINESS.md)、[停止統合案](STOP_INTEGRATION_PLAN.md)、[台帳片側保存の復旧契約案](RUNNER_RECOVERY_CONTRACT_PROPOSAL.md)。これらの未採用契約を実装済みと扱わない。使用量24%・残76%で、次に送信直前STOPの限定修正を継続。Claude引き渡し不要。
+
+## 2026-09-11 09:04 JST — 送信直前STOPの統合
+
+追加15件を含む **1040 passed, 15 warnings in 181.47s**、終了コード0。Notifierの動的stop_checkを主系home/STOPへ接続し、選択後にSTOPが現れる場合もNEW試行を止める。永続停止や既存停止ファイルを上書きしない。予約前の永続STOP統合は未実装で、外部書込全体の原子性まで保証した意味ではない。
+
+別途、レポート保存失敗・削除後の時刻巻戻し防止をDBへ追加し、独立13件通過。これを含む全体試験は次の実測に記録する。詳細は[通知器結合設計](NOTIFY_INTEGRATION_PLAN.md)。アカウント使用量の直近公式値26%・残74%。Claude引き渡し不要。
+
+## 2026-09-11 09:10 JST — 今回の集中継続の終了
+
+最終の製品コードに対する全体試験は **1066 passed, 15 warnings in 157.56s**（終了コード0、failed/errors/skip/xfailなし）。収集後に追加した製品コード無変更の日次フロー3件も別実行で **3 passed in 6.64s**。合計1069件を通過確認したが、1069件を同時に実行したという意味ではない。15警告は合成候補の一単元予算不足による除外。
+
+時刻DBの耐久化、動的STOP、閉じたDBの読取診断、開始残高の既存ルール再利用まで統合した。最後の開始残高反証A5は修正後5/5通過10.34秒、公開純粋検証8/8通過0.28秒。負の平均取得価格の受容は今回の新規仕様として採用せず、[監査メモ](SNAPSHOT_INPUT_REVIEW.md)とcommon/ISSUES.mdに未決論点として残した。共通仕様本文・共通合成データは変更していない。
+
+成果物の入口は[模擬シグナル画面とPowerShell手順](MOCK_DEMO.md)、[実装範囲・残工程](PHASE2_READINESS.md)、[復旧契約案](RUNNER_RECOVERY_CONTRACT_PROPOSAL.md)、[停止統合案](STOP_INTEGRATION_PLAN.md)。合成市場の実生成結果は承認2件・見送り3件、予約478856円、実送信・実注文なし。
+
+アカウント共通Codex週枠の最後の公式確認は09:10 JST、使用29%・残71%。目安30%直前の検証済み区切りで新規工程を止める。使用量を増やすための再試験は行わない。Codex単独・両見張り停止を維持し、Claude起動・公開はしていない。
+
+終了時刻: 2026-09-11 09:10 JST。Claudeへの引き渡し不要。
+
+## 2026-09-11 09:37 JST — Astra / Sol分担と日次リハーサル
+
+Astraが設計・採否・最終レビュー、Sol 3体が実装・独立試験・文書レビューを分担。今回の継続上限はアカウント使用率50%へ更新した。現時点は使用30%・残70%。両見張り停止・実通信禁止を維持する。
+
+`daily_rehearsal.py`で通常、データ欠損、休日、審査欠落、締切、STOPの6ケースを仮想時計で接続した。共通合成市場から実Proposalを生成し、stub審査・台帳・未送信キューまで通す。欠損は実DB検査でDATA_INCOMPLETE、確認済み休日だけNO_SESSIONとなる。例外後の専用homeは削除・再利用せず残す。
+
+独立 **15 passed in 43.81s**。60警告は4ケースの生成器が出す一単元予算不足による除外である。外部通信・プロセス起動・flush禁止下で6ケースを検証。試験前提の誤りや残存失敗はない。コードレビュー時に見つけたシナリオ名だけによる結果固定を実DB検査へ修正し、無効入力試験もscenario/seedを独立に検査するよう補強した。
+
+PowerShell CLIも終了コード0、生成5件・承認2件・予約478856円・NOT_SENTを実測した。入口は[日次操作手順](MOCK_DEMO.md)、[受入条件と次段階の再開案](DAILY_REHEARSAL_PLAN.md)。この時点の15件は個別実行で、全体試験の新しい合算結果ではない。
+
+## 2026-09-11 09:42 JST — 日次処理の途中停止記録
+
+`daily_progress.json`に処理段階・連番・終了状態を原子的置換で記録する。想定されたデータ欠損/休場もCOMPLETEDとなり、result_statusで正常候補と区別する。例外時はFAILEDと型名だけを可能な範囲で保存し、元例外を保持する。予約や途中ファイルを削除・再利用せず、強制終了ではRUNNINGが残り得る。台帳との一括確定、電源断の保存保証、自動再開は行わない。
+
+独立障害試験は最初の11件通過（9.21秒）、その後のフォルダ競合追加とDropbox試験修正の2件通過（0.84秒）。1件の再実行を含むため異なる試験は12件。既存フォルダの非破壊、存在確認後の作成競合拒否、通知準備/登録失敗後の予約保持、失敗記録保存失敗でも元例外維持を確認した。Dropbox試験は実フォルダの名前に依存せず、将来NAS上でも同じ条件を検証する。
+
+この段階の使用率31%・残69%。全体統合とSELL/EXITの独立結合試験を継続する。Claude引き渡し不要。
+
+## 2026-09-11 09:46 JST — 日次・停止・SELLの全体統合
+
+**1103 passed, 135 warnings in 196.26s**、終了コード0。前回確認した1069件に日次15件、障害12件、SELL結合7件を追加し、同時に全体実行した。135警告は合成候補の一単元予算不足による除外で、失敗ではない。
+
+SELL7件は既存の下流契約を明示Proposalで確認したもので、新しい売却戦略ではない。同一銘柄BUY/SELLの通知分離、売却可能株、STOP、片側審査欠落、模擬通知成功が約定ではないことを検証。使用31%・残69%で、次は完了結果の読取専用確認を進める。実通信・見張り停止を維持。
+
+## 2026-09-11 09:59 JST — 完了履歴の読取確認まで統合
+
+最終全体実測は **1160 passed, 4 skipped, 165 warnings in 245.61s**、終了コード0。前回の1069件に対し、今回追加した異なる通過試験は91件（日次15、障害12、SELL7、履歴参照19、履歴境界38）。4件のskipはWindowsで実シンボリックリンクを作成する権限がないためで、通過扱いにはしていない。165警告は合成候補の一単元予算不足による除外。
+
+日次の最終要約後に完了索引を一度だけ保存し、別APIでファイル集合・内容・完了進捗を読み取り専用で確認する。変更や不一致では要約を返さない。境界反証で見つけた非正連番、必須状態の双方欠損、重複JSON項目、bool版番号、Dropboxへの直接書込の5系統を拒否するよう修正した。索引の上書き、自動再審査、再登録、台帳の修復はしない。
+
+実リンク未実施の限界に加え、REPARSE_POINT属性の注入による読取前拒否と、このPCで実作成したWindowsジャンクションの拒否を別に確認した。09:52 JSTの手動確認は`NEEDS_RECONCILIATION`。読取CLIは実際の完了済み休場例に対して`VERIFIED_HISTORY`、`NO_SESSION`、`current_signal=false`を返した。電源断耐久、外部並行書込の原子的観測、索引ごと再作成する改ざんへの保護は保証しない。
+
+操作は[PowerShell手順](MOCK_DEMO.md)、採用範囲は[日次設計](DAILY_REHEARSAL_PLAN.md)、残工程は[実装範囲と不足](PHASE2_READINESS.md)。読み取り専用参照までの採用であり、INTENTの書込復旧・永続STOPの予約前統合・売却戦略は未実装のまま。
+
+最終確認09:59 JST：アカウント共通Codex使用33%・残67%。Astraが設計と最終レビュー、Solが個別実装・独立試験を分担した。今回の50%は継続上限として維持し、50%到達とは報告しない。両見張り停止、実LLM/LINE/注文なし。Claude引き渡し不要。
+
+終了時刻: 2026-09-11 09:59 JST。
+
+## 2026-09-11 10:22 JST — 停止状態の読取診断
+
+`ops/aitrader_ops/stop_status.py`に公開読取API、主系に`aitrader.stop_diagnostics` CLIを追加した。正常に閉じた通知DBの停止履歴・現在値と、明示された停止ファイルを確認する。DB欠損・不正型・履歴矛盾・未来時刻・sidecar・読取失敗・観測中の変更ではUNKNOWNを返し、停止なしへ補完しない。既存Notifierの変更、停止解除、runner予約前への接続は行っていない。
+
+独立20件＋境界33件の通過を含め、全体 **1213 passed, 5 skipped, 165 warnings in 236.40s**、終了コード0。追加の実symlink試験1件はWindows権限不足で未実施、既存4件と合わせ5件skip。165警告は既存の合成候補の一単元予算不足。単独試験の不正引数・WAL・注入方法の前提誤りを修正し、途中状態変化の試験は実際の注入フラグも確認した。誤った試験を通すためのexists呼出は残さず、lstatで不存在と読取失敗を区別している。
+
+DB読取の前後と停止ファイル検査後に本体・sidecarを再照合する。停止ファイルも二度確認する。これで観測中に残る変更を検知するが、外部書込と同時の原子的な一時点観測を保証するものではない。重複停止キーも不正として拒否する。
+
+PowerShell CLIは既存模擬DBでCLEAR・DBのSHA256不変、不存在DBでUNKNOWN・終了コード2・保存先未作成を実測した。入口は[操作手順](MOCK_DEMO.md)、[停止診断と残契約](STOP_INTEGRATION_PLAN.md)。次は初期化時から停止ストアを持つ契約と制御書込の直列化を整理してから、予約前接続を扱う。
+
+最終確認10:21 JST：Codex全体使用35%・残65%。Astra設計・最終確認、Sol実装・独立試験の分担を維持。継続上限50%、両見張り停止、実審査/LINE/注文禁止も維持。Claude引き渡し不要。
+
+終了時刻: 2026-09-11 10:23 JST。
+
+次の作業用: [Codex継続プロンプト](Codex継続プロンプト.md)。Claudeへの連携公開は行わない。
+
+## 管理STOPと予約前確認（2026-09-11）
+
+Astraが契約・runner統合・最終確認、Sol 3担当が停止管理実装・独立API試験・独立結合試験を担当した。Claudeレビュー済みではない。新規模擬home限定のversion 2を明示採用し、既存homeは移行しない。
+
+追加したaitrader.managed_stopで通知DBを初期化時から持ち、明示STOP/RESUMEをrunnerと同じロックへ集約した。新規BUYは審査時と予約直前に停止を再確認し、不明なら予約しない。結果には停止観測を残す。完了runは当時の結果を維持する。
+
+| 解釈 | 今回の扱い |
+|---|---|
+| 初期化失敗 | flagと現物を残して利用拒否。既存homeを再作成しない |
+| DB・clock欠損 | UNKNOWNまたは入力拒否。STOPなしへ補完せずDBを再作成しない |
+| 永続STOPとファイル | OR。RESUMEだけでは残存ファイルの停止を解除しない |
+| BUYとSELL | 新規BUYはSTOP/UNKNOWNで予約拒否。SELLには既存の株数・二承認・締切条件を適用 |
+| 遅着・未来・逆時刻 | 遅着は既存監査契約、未来・clock以前は拒否。制御前にclockを進め、失敗でも巻き戻さない |
+| 完了run | 現在の承認ではなく保存済み履歴。後発STOP/RESUMEで書き換えない |
+| 排他の範囲 | 管理APIとrunnerのみ。外部直接書込とOS全体の原子性を保証しない |
+
+最終追加試験は33 passed / 19.56秒。内訳はAPI 22件、runner結合11件。初回のroot単独実行はPYTHONPATH未指定でaitrader_opsをimportできず収集エラー2件となった。プロジェクトrootでopsとbuild-codexを明示して再実行し全通過。製品の前提変更で解消したものではない。結合試験作成中の完了run再読ケースではVerdict受信時刻を変えていたため正しく入力変更を拒否した。固定入力へ修正したテスト前提誤りである。
+
+日次CLIのmanaged選択、managed配信前検査の共通化、実制御認証、既存home移行、INTENT復旧は未実施。[採用契約](STOP_INTEGRATION_PLAN.md)、[残工程](PHASE2_READINESS.md)、[PowerShellの作業フォルダ移動とAPI案内](MOCK_DEMO.md)、[次の継続用プロンプト](Codex継続プロンプト.md)を参照。実審査・LINE・発注・両見張りの起動やClaudeへの公開は行っていない。
+
+検証確定（2026-09-11 11:00 JST）: 全体試験は1228 passed / 5 skipped / 165 warnings、226.52秒。収集開始時の追加API 15件を含む。後から確定した追加試験とlegacy型判定の最小修正を含め、管理STOPの2ファイルを再実測し35 passed / 18.84秒（API 24＋結合11）。後者15件は全体と重複するため、1228＋35を独立件数として合算しない。最終版で全体を再実行したとは表記しない。スキップ5件は既存のWindows実symlink作成権限不足、警告165件は既存合成データの単元未満予算除外である。
+
+最新使用量はアカウント共通Codex 37%使用・63%残。50%停止目安は維持。終了時刻: 2026-09-11 11:00 JST。次回は日次CLIへの明示managed接続と配信前検査共通化を進める。
+
+## 日次managed CLI・模擬配信接続（2026-09-11）
+
+Astraが停止・時計の境界設計と配信統合、Solが日次実装、通知計画/履歴実装、独立配信試験を分担した。Codex内の分担であり、Claudeによる独立レビューではない。
+
+日次API managed_stop=True / CLI --managed-stop を追加し、新規homeから停止管理付きの審査・通知登録まで接続した。模擬配信では通知DBを開く前の診断と、開いた後の永続STOP・ファイル再確認を分け、WALを無視してCLEARとする回避策は採用していない。審査時の固定policyをmanifestへ保存し、通知準備時も一致を要求する。managedclockを登録・配信・照合の共通時刻床へ拡張した。
+
+| 実測・判断 | 結果 |
+|---|---|
+| 実CLI normal --managed-stop | CANDIDATES、生成5件、APPROVED 2件、REJECTED 3件、模擬予約478856円、実送信false |
+| 同じCLI成果物の履歴参照 | VERIFIED_HISTORY、current_signal=false、自動再開false |
+| 独立日次STOPケース | 永続STOPを07:00に記録、NOT_APPROVED、予約0円 |
+| DB欠損・破損 | 新規DBを再作成せず操作拒否 |
+| 選択後STOP・読取拒否 | NEW試行直前にも確認して遮断 |
+| 共通clock更新後にrunclock保存失敗 | 配信試行0、先行clockは進行保持 |
+| 初期化失敗 | 日次進捗開始前ならmanaged初期化flagを保持し、daily_progressを作らない |
+| receipt | 形式v1維持、管理marker/clockも全件hash対象。DB非接続の履歴確認のみ |
+
+実CLIの出力はDropbox外のTempに保存し、共通合成データを変更していない。rootの初回部分試験はPYTHONPATH未指定によるimport収集エラー2件で、明示した再実行は35件通過。独立配信試験の初回失敗は固定queue keyの仮定、初期化済DBを未作成とした期待、拒否理由の優先順位を固定した期待というテスト前提誤りで修正した。既存receiptの最小fixtureは実際の封印で必須のv1 markerとhash索引を加えた。製品の拒否を緩めて試験を通したものではない。
+
+[採用契約](STOP_INTEGRATION_PLAN.md)、[PowerShellでのフォルダ移動と操作](MOCK_DEMO.md)、[残工程](PHASE2_READINESS.md)、[次回の継続プロンプト](Codex継続プロンプト.md)。実審査・LINE・注文・両見張り・Claude公開は実行していない。
+
+残り4シナリオもmanagedで実測（試験ファイル追加なし）: holiday=NO_SESSION、data_missing=DATA_INCOMPLETE、judge_missing/deadline=REVIEW_INCOMPLETE。全件予約0、VERIFIED_HISTORY、current_signal=false、実送信false。休日・欠損は通知登録前に終了する。これで既存6シナリオのmanaged経路を確認した。
+
+最終全体実測（2026-09-11 11:32 JST）: **1267 passed / 5 skipped / 195 warnings、307.88秒**。今回追加は19件（日次4、配信10、通知計画/履歴5）で全体に含む。スキップ5件は既存Windows実symlink作成権限不足、警告195件は合成候補の単元未満予算除外。実CLI通常日と残4シナリオの追加実測はpytest件数へ加算していない。コード凍結後の全体実行であり、実行中に製品を変更していない。
+
+終了時刻: **2026-09-11 11:32 JST**。アカウント共通Codexは使用39%・残61%。次は[継続用プロンプト](Codex継続プロンプト.md)の模擬ステータス表示と残契約整理を進める。50%停止目安を維持し、実通信・見張りは停止のまま。
+
+## 模擬運用状態の読取表示（2026-09-11）
+
+operations_status（JSON）とoperations_view（静的HTML）を追加した。現在STOP、保存済み日次履歴、未照合の進捗記録を分離し、候補の銘柄・指値や現在の売買承認を出さない。外部送信・制御・修復機能はない。観測時刻は呼出側の明示入力であり、PCの実時計であることを保証しない。指定日より未来の保存要約は非表示にする。進捗には独立した観測時刻が無いためRUNNINGが現在も稼働中とは断定しない。
+
+[表示契約・再試行判断表](OPERATIONS_STATUS_CONTRACT.md)を参照。DB/clock欠損や破損、リンク、不正型、FAILED安全フラグ、表示中の進捗変化を保留する。VERIFIED_HISTORYも現在シグナルや実送信実績の証明ではない。
+
+ブラウザーのURLポリシーがローカルHTMLの表示を拒否したため、画面の目視検証は未実施。別経路で制限を迂回していない。HTML内容、escape、CSP、操作要素なし、読取によるファイル不変は独立試験で検証する。
+
+状態表示・管理版run診断の関連回帰実測（2026-09-11 11:42 JST）: **90 passed / 300 warnings、53.60秒**。状態API23件、HTML9件、managed診断6件と既存診断・レポートを含む。初回状態表示試験でFAILEDの必要フラグを欠いたfixtureがUNKNOWNとなった1件は、実際のFAILED記録へ合わせたテスト前提の修正で解消。全体再実行ではなく関連範囲の結果である。
+
+runner_diagnosticsを管理version 2へ接続し、保存manifestと現在固定policyが異なればCONFLICTを返す。通知DB・管理clockの現在停止をここへ混ぜず、停止診断は別に表示する。COMPLETEは履歴の分類で、自動復旧・現在の売買承認ではない。
+
+## 明示の模擬停止コマンド（2026-09-11）
+
+managed_control CLIを追加した。既存apply_managed_controlの窓口で、新たな解除条件や自動再試行は導入しない。STOPPED/RESUMEDはexit 0、照合不足/IGNOREDはexit 2で結果JSONを返す。IGNOREDは正常な遅着監査でも操作未適用を表す。設定JSONは重複キー・リンクを拒否し、1 MiB上限、読取前後検査を行う。拒否時に秘密設定や例外本文を表示しない。
+
+独立CLI試験 **10 passed / 1.21秒**。専用Tempの実CLIでもSTOP→照合なしRESUMEで停止維持→明示照合時刻付きRESUMEでCLEARを確認した。ユーザーの運用homeは操作していない。[PowerShell操作・終了コード](MANAGED_CONTROL_CLI.md)を参照。実通信・予約解除・STOPファイル削除は行わない。
+
+模擬制御CLIに、argparseの不正引数表示から入力値が漏れない補強も追加。関連12件1.24秒通過。診断の観測境界は独立14件通過・実symlink作成2件スキップ（Windows権限、拒否分岐は注入試験）。成果物欠損をMISSINGと期待した先行1件は、既存契約CONFLICTを確認して修正したテスト前提誤りである。危険な実操作や自動復旧は行っていない。
+
+## 管理ファイル読取・保存境界の補強（2026-09-11）
+
+管理marker/clockの安全読取8件、共通JSON writer 6件通過・実symlink2件スキップ、通知writer結合14件通過。通知計画・キュー・模擬配信/照合の保存を共通writerへ接続した。固定tmpを再利用せず、固有名を排他的に作成する。未resolveの保存パスを渡し、home内向きリンクも親/target検査で拒否する。旧固定tmpは開かず削除しない。失敗時の固有tmpも自動削除しない。
+
+DB更新→成果物保存の順序と保存JSON内容を維持し、両者の原子性は追加していない。保存失敗後もDBが進む場合があり、既存の照合条件・再送防止が必要である。既存のPath.write_text/固定tmpを前提とした障害注入は新writerに届かなくなるため、実際の固有tmp作成/置換へ注入点を更新する。製品の失敗条件を緩める変更ではない。
+
+[状態表示・再試行判断表](OPERATIONS_STATUS_CONTRACT.md)、[明示制御コマンド](MANAGED_CONTROL_CLI.md)、[残工程](PHASE2_READINESS.md)、[継続プロンプト](Codex継続プロンプト.md)を参照。
+
+次工程の通信なし監査は[実データ入力の準備状況](DATA_INPUT_READINESS.md)へ整理した。legacy adapterの現コードと既存試験の対応であり、現行外部サービスへの適合確認ではない。初期化副作用・入力原本の記録・単元既定・イベント不足・snapshot範囲など、実運用前に固定すべき境界を列挙している。
+
+全体検証の初回結果: 1358 passed / 1 failed / 9 skipped / 495 warnings、371.79秒。失敗はtest_linked_parent_is_rejected_before_child_readsで、リンク拒否自体と子ファイル未読取は維持されていたが、共通marker検査への統合時にUNSAFE_HOME_LINKがMOCK_MARKER_INVALIDへ置換された分類回帰だった。try範囲を分離して修正し、状態表示回帰を再実行する。この初回結果を全通過とは扱わない。
+
+タスクスケジューラの状態一覧は現権限でアクセス拒否となり、この回の実機状態確認はできなかった。見張りの登録変更・起動操作は行っていない。
+
+## 候補生成用設定の安全読取（2026-09-11）
+
+packet_cliのevents/lots JSONを候補計算前に検証する。重複キー（全階層）、非有限値、非object、不正UTF-8、1MiB超、対象/親リンク、読取途中の変更を拒否する。BOM・相対path・Noneは互換を維持し、lots既定100とイベントUNKNOWNを変更しない。ops依存は追加していない。
+
+独立18件1.24秒通過（opsなし）、既存packet関連65件通過。初回全体で検出したリンク理由分類回帰は状態API/HTMLの32件40.14秒で再検証し全通過。製品と試験を凍結し、最終版全体を再実行する。
+
+[実データ入力の現状・採用範囲](DATA_INPUT_READINESS.md)を参照。この補強によりJ-Quants実サービスの現行仕様への適合や実運用準備が完了したとは扱わない。
+
+最終版の全体実測（2026-09-11 12:16 JST）: **1377 passed / 9 skipped / 495 warnings、339.49秒**。直前1267件から通過試験110件増。新規9ファイル等を含む追加で、単独試験を重複加算していない。スキップ9件はWindows実symlink作成権限不足（既存5＋今回4）、警告495件は合成候補の単元未満予算除外。初回で検出した理由分類回帰を修正した後、製品凍結で全体を再実行した結果である。
+
+この時点の公式アカウント使用量47%・残53%。残りの許可範囲として、JQuantsClientの固定応答・認証失敗のオフライン検証へ続く。この後の変更を上記全体結果へ遡って含めない。
+
+## 取得クライアントのオフライン境界検証（2026-09-11 12:18 JST）
+
+JQuantsClientの認証・GETについて、通信例外とJSON decode失敗を機密情報なしの固定エラーへ変換する。元例外の表示連鎖も抑制する。payload dict、空白のみでないidToken、list内のdict行、paginationの型と反復を検査する。endpoint/keyをエラーへそのまま表示しない。fetchの業務変換、DB初期化・取込順序、公表日推定などは変更していない。
+
+root実測 **35 passed / 2.26秒**（既存4＋追加31）。全通信をfakeSessionに限定し、正常2ページ、要求引数・Authorization・timeout、元params不変、HTTP/通信/JSONエラーのstrとtracebackに機密値が出ないことを確認した。初回の独立試験2件はkwargsを浅く保存したため後のページ引数が遡及して見えたことと、tracebackのテストソース行へ機密リテラルを書いていたことによるテスト前提誤りで修正。製品の安全条件を緩めていない。
+
+この変更後は取得関連35件を再実測し、全体1377件を再実行したとは表記しない。直前の全体と既存4件が重複するため、1377＋35を独立件数として合算しない。
+
+終了時刻: **2026-09-11 12:19 JST**。公式アカウント共通Codexは使用48%・残52%。50%停止目安の手前の検証済み区切りで終了。画面目視はURLポリシーで未実施。実通信・発注・見張り起動・Claude公開は行っていない。
+
+[状態表示と操作](MOCK_DEMO.md)、[入力契約の残課題](DATA_INPUT_READINESS.md)、[次回の継続プロンプト](Codex継続プロンプト.md)。
+
+## 取得transactionとデータ種別の固定（2026-09-11）
+
+新規の取込試験13件で5市場表＋provenanceのrollback、後半取得/変換失敗、訂正と反復を確認した。公表日・調整済み列の確定仕様は5件で確認。部分調整列の解釈とpublication_estimatedの全DB意味論は[入力準備状況](DATA_INPUT_READINESS.md)の未採用事項として残し、推測で変更していない。
+
+load_syntheticがJQuants由来の既存表を削除してsyntheticに切り替えられる不具合を反証した。共通require_data_modeを追加し、load_synthetic/fetchの両方で、重い生成/取得の前とtransaction内の書込直前に同一出所を要求する。mode欠損は市場5表が全て空の場合だけ許可。異なるmode・未知/null mode・出所不明の既存行は拒否する。同一出所の明示再取込は許可する。
+
+新規mode試験13件通過。生成/取得中の外部mode変更でも上書きしないこと、外部変更そのものを巻き戻さないこと、拒否時の全市場表不変を確認した。関連既存22件も通過。source guardは外部全書込の排他保証や破損DBの自動修復ではない。初期化済み空schemaの作成という従来副作用は維持する。
+
+今回のユーザー上限は70%・残30%へ更新済み。前回50%の記載は履歴として扱う。実通信・実発注・見張り・Claude公開は起動しない。
+
+## 市場DBの読取専用レポート（2026-09-11）
+
+market_inspection / market_inspection_cliを追加。既存市場DBの出所分類、5表の件数・保存期間、欠損・非有限・価格大小・基準日/カレンダー不足等を確認する。INSPECTEDは限定集計成功を示すだけで、current_signal/ready_for_liveは常にfalse。外部アクセス/拡張自動読込を無効にしたDuckDB読取専用接続を使用し、BASE TABLE/列型/主キー、path/sidecar、DB前後hashを検査する。
+
+独立API27件通過、CLI3件を加え関連30件通過。rootの先行27件はAPIの追加3件確定前であり、別個に合算しない。最小人工DBの実CLIでもINSPECTED/source synthetic、5表集計、未検証警告、承認falseを確認した。実通信なし。
+
+[PowerShellの移動・実行手順と結果の読み方](MARKET_INSPECTION.md)、[採用範囲・残契約](DATA_INPUT_READINESS.md)。SQLite台帳の診断とは独立しており、自動取得・修復・取引判断には接続していない。
+
+## 出所検査の下流接続・比較指数の有限性（2026-09-11）
+
+run_signalsとbacktestは既知のdata_mode（synthetic/jquants）を要求する。backtestの比較指数に無限値があるとCSVを書いた後でsummary保存に失敗する不具合を反証し、成果物作成前に有限・正値を検査するよう修正した。反証2件は修正後通過。研究APIの休日/未来as_of解釈や中間保有評価の持越しは、仕様が一意に決まらないため変更していない。
+
+合成パイプラインと日次リハーサルはload直後にsyntheticを要求する。故障注入でJQuants/未知/欠損modeが残っても、人工イベントの付与・候補計算・審査に進めない。日次ではFAILED acquire_validateを残しNO_SIGNALに変換しない。生成例外のFAILED generate・本文非保存・予約0と合わせ8件通過。
+
+最新の共通フェーズ1受入は **8 passed / 19.09秒**。共通受入ファイル・合成データは変更していない。全体回帰中に、正常な人工市場fixtureがdata_modeを省略していたため新guardで拒否されるケースを検出している。出所拒否を弱めず、fixtureに明示する方針で確認する。
+
+全体回帰の初回実測: **1474 passed / 5 failed / 9 skipped / 517 warnings、208.48秒**。5件は同一の人工市場fixtureで出所を省略していたため、新guardが正しく拒否したもの。fixtureにsyntheticを明示し、利用先7件を再実測して全通過（4.54秒）。欠損/未知出所の拒否を緩めていない。初回全体を全通過と表記しない。
+
+## 候補とpacket入力の同一DB時点化（2026-09-11）
+
+api内に接続済みDB用helperを分離し、公開run_signalsの3引数と戻り値を維持した。run_signalsとpacket.generateは、それぞれ1接続のBEGIN内で必要なSELECTを行い、成功COMMIT・例外ROLLBACKとする。packetは候補・calendar・当日価格・provenanceを同じDB時点で読む。mapping先行検証とpacket hash項目は変更しない。
+
+独立4件で公開互換、1接続、rollback、実DuckDB MVCCを確認。候補計算中に別接続がprice/calendar/seedを訂正してcommitしても、初回は旧値で統一、次回は新値でsnapshot_idも変更する。関連43件通過、共通受入8件も再通過（14.78秒）。既存private seamのmonkeypatch3箇所は新内部helperへ移し、公開APIを変更したとは扱わない。
+
+これはDuckDB内の読取transaction整合であり、外部file原本・全入力系譜・外部file差替えの原子性ではない。既存db.connectのengine設定と欠損時副作用は維持する。詳細は[採用範囲](DATA_INPUT_READINESS.md)を参照。
+
+## 格納数値の有限性（2026-09-11）
+
+JQuants fetchの格納予定10数値項目で、bool・非数値・NaN・Infinityを取込前に拒否する。有限数値文字列は互換を維持する。Noneの従来扱いも変えず、OHLCのみ既存の欠損拒否を適用する。0/負値の新しい業務値域や部分調整/公表日解釈は採用していない。
+
+独立59件通過、既存client/mapping/rollback関連53件も通過。既存DBへ無限値が保存されることを反証した後、拒否時の5表＋provenance不変を確認した。部分/完全調整列と公表日fallbackの試験は数値guardで既存挙動が変わらないことの確認であり、部分調整の実データ適格性を採用した意味ではない。
+
+## 市場DBの実行先と接続資源（2026-09-11）
+
+db.connectの共通入口で、実行DBをDropbox外に置く既存方針を強制した。raw絶対パスの親/home/DB本体/WAL/tmpを検査し、link・junction・reparseと型違いを拒否する。DB/WALは通常file、tmpは通常directory。通常WALはwriterの回復に必要なので禁止・削除せず、safeな未作成home/DBは従来どおり作成できる。mkdirの前後に検査する。既存の禁止場所を移動したり、権限を変更したりはしない。
+
+独立17件通過（境界14＋接続cleanup3）。禁止場所ではmkdir/DB/client/buildに進まないこと、mkdir後の競合配置を再検査すること、接続初期設定失敗時のcloseと元例外保持を確認した。関連API回帰25件通過。外部からのパス差替え全体を原子的に排他する保証は追加しない。
+
+コードと小さな報告書はDropboxに置けるが、実行DBはローカルのAI_TRADER_HOMEを使う。設定先が禁止されている場合に別場所へ自動移動・自動再作成する機能はない。[入力側の契約と残課題](DATA_INPUT_READINESS.md)、[読取検査の操作](MARKET_INSPECTION.md)を参照。
+
+### バックテストDB読取の一貫性（2026-09-11）
+
+全rebalanceの候補生成を含むDB読取を単一transactionに統合した。途中で別connectionが価格・指数・provenanceを訂正しても、同じrunは開始時snapshotを使用し、次回runで訂正を反映する。正常時COMMIT、例外時ROLLBACKとconnection解放、成果物生成はCOMMIT後。独立MVCC試験3 passed、共通受入と時系列試験10 passed。エンジンのread-only接続や電源断耐久を保証する変更ではない。
+
+別途、成果物を既存folderへ再出力中にCSV/summary/renderが失敗すると、新旧成果物が混在する現象をTempで再現した。DB snapshotの保証とは分けて、生成完了後の公開・失敗時の旧成果物保護を次段階で検証する。
+
+### 市場入力・読取一貫性の全体再実測（2026-09-11）
+
+`common/tests build-codex/tests ops/tests` を全実行し、**1570 passed / 9 skipped / 517 warnings、208.18秒**。共通フェーズ1受入8件もこの全体に含む。先の5失敗は、正常ケースの人工DB fixtureにsource登録がなかった前提誤りとしてfixtureを補正した。unknown source拒否の製品挙動を弱めていない。JQuants有限数、path/接続解放、packet/signal/backtest同一snapshotの追加を含む時点の全実測である。次の成果物保存修正はこの数に含まない。
+
+### 結果保存の旧世代保護（2026-09-11）
+
+backtestの4成果物を固有stageで完成後に公開し、既存4件をbackupする方式へ変更した。生成失敗では旧4件不変、公開/backup退避失敗では旧状態へ復元を試み、復元不能なら明示エラーとlock/backup保持で自動上書きを止める。同じ出力先への反復実行と無関係fileを維持する。独立試験**25 passed**。共通受入8件も実装後に通過（追加6境界より前の実行）。協調writer排他であり、公開中readerの全file同時点原子性・電源断耐久の保証ではない。
+
+CLIのraw出力先と共有summary/reportのリンク・reparse検査は**7 passed**。市場検査seed境界は新規8件、関連38件通過。上の全体1570件の実測より後の変更であり、全体件数へ加算して再実行済みとは扱わない。詳細は[成果物保存契約](BACKTEST_ARTIFACT_PLAN.md)を参照する。CLIのsummary/report二fileのコピー失敗保護は続く別段階で実装する。
+
+### 保存・概要出力・HTMLの全体実測（2026-09-11）
+
+4成果物の安全公開、共有概要export、standalone report、CLI出力path、seed境界、実別process writer排他を含め、全体 **1642 passed / 9 skipped / 517 warnings、199.23秒**。後から追加した `test_runner_crash_boundaries.py` は別実測 **5 passed、1.68秒**。後者は全体収集後に追加したため1642に含まない。現契約のINTENT再評価の一回性、台帳APPROVED片側保存時の停止/予約保持、owner/hash/calendar変更拒否を確認し、runner製品は変更していない。
+
+現在の未採用判断は[市場データ保存契約の選択肢](MARKET_CONTRACT_OPTIONS.md)へまとめた。現状C（研究互換＋警告維持）だけが採用済みで、A/Bや旧home移行を実装したという意味ではない。バックテスト保存残骸の読取診断はこの全体実測より後の追加工程である。
+
+### 保存結果の読取診断と最終対象試験（2026-09-11）
+
+`inspect_backtest_results` と `backtest_inspection_cli` を追加した。4成果物の限定SHA-256観測、lock/stage/backup残存、欠損、観測中のfolder差替えを区別する。読取専用で、lock解除・残骸削除・自動復元・再開は行わない。OBSERVEDも同一生成世代やCSV内容の整合を証明しない。独立18件、CLI5件通過。Tempの実CLIも終了0/OBSERVEDで固定安全flagを確認した。
+
+最終対象検証は共通フェーズ1受入8件、今回の成果物保存・export・report・CLI・実process排他・読取診断・runnerクラッシュ境界を合わせて **100 passed、17.44秒**。このうち全体1642件の後に増えた試験はrunner5＋診断18＋CLI5の28件であり、全体を1670件で再実行したとは報告しない。最終製品の追加は独立読取診断で、その他の製品は全体1642件実測時点から変更していない。
+
+操作と保証範囲は[保存結果の読取診断](BACKTEST_INSPECTION.md)、失敗時の保存契約は[成果物公開](BACKTEST_ARTIFACT_PLAN.md)、市場入力は[読取検査CLI](MARKET_INSPECTION.md)。価格調整・公表日来歴の次契約は[選択肢](MARKET_CONTRACT_OPTIONS.md)に分けており、まだ採用していない。
+
+### 来歴記録の独立fixture試作（着手、2026-09-11）
+
+市場データB案を実運用へ採用する変更ではなく、新規専用homeと固定fixtureだけでrun/row来歴を検証する独立APIを実装中。専用`data_mode=provenance_fixture`により、既存の取込・候補・packet・backtest・dailyへ自動接続しない。既存Cの変換、共通仕様、既存homeは変更せず、実データ準備完了は常にfalseとする。
+
+新規home限定、成功transactionだけのrun履歴、canonical行データとhashの保存、現在行の訂正と来歴の同時更新、同じbatch再投入のNO_OP（過去batchで現在値を巻き戻さない）を、実通信なしで試験する。これは未確定のvolume/turnover基準や外部API仕様への適合を決めるものではない。実測結果は完成後に追記する。
+
+### 独立来歴fixture試作の確定（2026-09-11）
+
+`provenance_fixture`専用modeでrun/row来歴とcanonical JSONを保存する隔離API・CLI、read-only inspectionを追加した。既存のsynthetic/jquants取込・signal・packet・backtestは専用modeを拒否する。実データB案の採用や自動接続ではなく、固定fixtureで履歴技術を検証する入口である。
+
+関連48件（writer11、CLI14、inspection18、隔離5）が6.58秒で通過。その後、順序/同値正規化2件、別process writer競合1件、主要表schema事前拒否4件を追加した。全体再実行は進行中で、最終件数は後の記録を参照する。初回のinspection2失敗はNOT NULL/CHECKが不正状態の作成自体を拒否した前提誤り、順序試験1失敗はDuckDBのローカルTZ表示をUTC表記と決めつけた前提誤りとして、正しい制約拒否/同一瞬間比較へ修正した。製品を弱めていない。
+
+実CLIでは `C:\Users\s\AppData\Local\Temp\ai-trader-provenance-demo-20260911-043730` に固定fixtureを用意し、初回→訂正→旧batch再投入がCOMPLETED/COMPLETED/NO_OP、検査がVERIFIED_FIXTURE、run履歴2・主要表各1行となることを確認した。結果は同directoryのdemo-result.json。これは架空fixtureの実測であり、市場成績や実売買シグナルではない。
+
+[来歴fixtureの契約・PowerShell操作](PROVENANCE_FIXTURE.md)、[未採用の市場来歴案](MARKET_PROVENANCE_DRAFT.md)を参照する。
+
+### 来歴fixtureを含む全体実測（2026-09-11 13:42 JST）
+
+共通試験・主系・opsをまとめて **1725 passed / 9 skipped / 517 warnings、255.55秒**。来歴fixture関連55件、runnerクラッシュ境界5件、成果物読取診断23件を含む。9件のskipは実行環境依存のため未検証として残す。実API・審査・通知・注文・見張り起動は行っていない。
+
+この後の独立工程として、個人向けJ-Quants V2の公開仕様差分と、通信・DB書込を行わない応答形状検査を準備する。旧adapterをV2対応済みと扱わず、公開資料の確認と認証実API試験を区別する。
+
+### V2仮レスポンスの独立形状検査（2026-09-11）
+
+`jquants_v2_contract.inspect_v2_page(dataset, payload)` を追加し、5種類の応答についてローカルな必須列・型・正規ISO日付・有限数値・ページングを確認する。結果には件数と固定flagだけを返し、認証値や行内容は返さない。失敗時の例外表示にも入力を含めない。未知列は許容し、価格の調整列から別の値を合成しない。
+
+独立 **143 passed、0.11秒**。全体1725件の後に追加した純粋モジュールなので、1868件で全体を再実行したと報告しない。既存取込・DB・CLI・シグナル経路からの接続はない。
+
+この検査は公式全列・プラン保証ではなく、ローカル提案の`v2-shape-only`契約である。空配列や数値Noneは形として許容するため、データ充足・価格適格性・取引可能性を証明しない。`ready_for_live=False`を維持し、公表時点・上場日・単元を推測補完しない。
+
+[個人向けJ-Quants公開資料レビュー](JQUANTS_PUBLIC_DOC_REVIEW.md)、[入力準備状況](DATA_INPUT_READINESS.md)、[来歴fixture手順](PROVENANCE_FIXTURE.md)から確認できる。
+
+### 独立レビューで見つけた境界の修正（2026-09-11）
+
+来歴検査で、runごとの5表非空、basisとNULL/既定係数の関係、公表日推定DATE_PLUS_4の4暦日関係を検査するよう補強した。自己整合するhash/run_idへ書き換えても矛盾を拒否する新規7件が通過。最初のrun試験は現在4表まで空にするため旧検査で落ちる不足があり、正常な現在5表を維持したまま不完全な第2runだけを追記する反証へ修正した。初回試験実行のpytz欠損はTIMESTAMPTZの直接fetchという試験依存をVARCHAR castへ直して解消し、製品に依存を追加していない。
+
+4成果物writerと共有2file exportでは、公開成功後の旧backup削除失敗を独立のcleanup失敗として扱う。新成果物が既に公開済みであることを専用例外で明示し、lockを保持して次のwriterを拒否する。旧backupの部分削除はあり得るため、復元済みとは報告しない。4file新規6件、export新規4件が通過し、既存公開失敗時の復元契約は維持した。
+
+この段階を含む全体試験を再実行中。後続の最終実測を参照する。詳細は[成果物保存契約](BACKTEST_ARTIFACT_PLAN.md)、[来歴fixture](PROVENANCE_FIXTURE.md)。
+
+### 最終確定（2026-09-11 13:53 JST）
+
+**全体1885 passed / 9 skipped / 517 warnings、260.70秒**。共通受入、主系、opsを同時実行し、独立V2形状143件、来歴fixture意味整合7件、公開後cleanup10件を含む最終版で確認した。修正第一試験の保存時刻13:48:39は全体試験開始より前であり、修正後の反証が収集されている。
+
+Codexアカウント共通の使用量は**65%・残35%**。今回上限70%には未達で、実装・独立レビュー・全体検証が揃った区切りで終了する。無料リセット未使用。次工程の実データ契約採用、V2の認証実測、正確な公表時点・単元・上場日の取得元、INTENT書込復旧は未完了のまま。実通信・発注・見張り・Claude公開は実施していない。9件のskipとHTML目視未実施の制限も残す。
+
+次回は[Codex継続プロンプト](Codex継続プロンプト.md)を入口とする。[公開資料レビュー](JQUANTS_PUBLIC_DOC_REVIEW.md)、[来歴fixture](PROVENANCE_FIXTURE.md)、[成果物保存契約](BACKTEST_ARTIFACT_PLAN.md)、[準備状況](PHASE2_READINESS.md)から詳細へ辿れる。
+
+### V2仮JSONのファイル検査入口（2026-09-11）
+
+独立CLI `python -m aitrader.jquants_v2_inspection_cli --dataset ... --input ...` を追加した。既存の安全な1MiB JSON読取を再利用し、5種類のV2形状を検査する。ネットワーク・認証・DB・ファイル書込は行わず、固定stderrで入力値やpathの漏洩を防ぐ。独立レビューでも、既知の非協調path競合限界を超える具体的な問題は見つからなかった。
+
+新規19件が通過。既存の形状143件・JSON読取18件と合わせて **180 passed、0.83秒**。製品変更は独立CLIの追加だけで、既存経路は無変更。前回全体1885件の後の追加であり、全体1904件で再実行したと扱わない。
+
+Tempの架空calendar JSONを実PowerShell/別Python processから実行し、終了0・row_count=1・read_only/fixture_only=true・current_signal/ready_for_live=falseを確認した。空やNULLも形として許容するため、実データ充足や売買承認とは区別する。
+
+フォルダ移動からの操作は[V2仮JSON検査手順](V2_FIXTURE_INSPECTION.md)、続きは[Codex継続プロンプト](Codex継続プロンプト.md)。実通信・発注・見張り・Claude公開は未実施。
+
+### 保存失敗後の診断結合（2026-09-11 14:18 JST）
+
+実4file publisherと実2file exportでcleanup失敗を起こし、読取診断がREVIEW_REQUIREDを返すこと、全fileのhash/mtimeとlock/残存物が不変であること、次writerが拒否されることを新規3件で確認。正常4fileはOBSERVED、正常2file共有出力はINCOMPLETEとして区別する。製品変更なし。関連cleanup計13件が **13 passed、1.01秒**。
+
+前回全体1885件後の追加はV2 CLI19件と今回3件。全体1907件で再実行したとは表記しない。使用68%・残32%、70%上限内。復旧手順は自動化せず、[読取診断の手動確認範囲](BACKTEST_INSPECTION.md)へ追記した。元の例外型は診断JSONから復元できない。実通信・発注・見張り・Claude公開は未実施。
+
+### 主系の入力保存先と候補所有の補強（2026-09-11、実装中）
+
+日次・合成pipelineの入口でraw pathを検査してから使用するよう変更した。従来のresolve先行では親linkの情報が失われ、下流の通常path検査を通ってしまう。新規12件で、親reparse/非directory/Dropboxを初期化前に拒否し、安全な相対pathは従来どおり初期化へ届くことを確認した。
+
+runnerと記録済み審査入口にも同じ問題があり、共通raw guardへ接続中。日次receipt直接APIの全親検査と、完了candidateのowner/day/side/hash照合も並列で補強中。未採用のINTENT復旧やlegacy STOP契約変更を含めない。完了結果は後続の実測を参照する。
+
+### 親パス・候補原本の確定と全体検証（2026-09-11）
+
+入口のraw path検査をrunner、記録済み審査、mock demo、日次、合成pipelineへ接続し、日次receipt直接APIの全親検査も追加した。SQLiteの通常sidecarはwriterでは許容し、link/reparse/型不正だけを拒否する。新規入口12件、runner/reviewパス20件、receipt親4件が通過。Tempに実Windows junctionを作った追加実測でもinitialize/daily/pipeline/demoの4入口がhome作成前に拒否した。
+
+候補所有と保存原本の新規19件が通過。未完runでは全stateのowner/day/side/hashと結果・outboxのbindingを検査し、別owner完成候補の流用を拒否する。診断のowner照合も全stateへ拡大。同run完了結果の既存履歴再読は維持し、今回途中で加わった範囲外のcompleted fastpath再検証は統合時に除いた。
+
+旧managed STOP試験1件は同一候補IDを別runへ流用する前提が新契約と衝突した。二回目を別候補IDへ変更し、STOPが新しい候補にも効いて予約0を維持する元の試験目的を保った。候補所有拒否は別の新規試験で確認する。日次・合成・managedの関連35件も通過（41.74秒）。全体検証は実行中、最終件数は後続を参照する。
+
+独立レビューでは通知enqueue/delivery/reconcileの現在のSTOP・clock・SENT反映契約に具体的不具合は見つからなかった。legacy STOPの追加変更、INTENT復旧、実通信は今回採用していない。
+
+### 全体再確認中の1件修正
+
+初回全体は1961 passed / 1 failed / 9 skipped（273.30秒）。失敗はDropbox拒否の説明文が一般化して従来のエラーメッセージ契約と一致しなくなったもの。拒否動作は維持されており、説明文を元へ戻して関連13件が0.48秒で通過した。テスト期待を緩めず製品側の互換性を修正した。最終版の全体再実行結果は次の記録を参照する。
+
+### 最終確定（2026-09-11 14:50 JST）
+
+**全体1962 passed / 9 skipped / 517 warnings、272.91秒**。前回全体1885件以降のV2 CLI19件、cleanup診断結合3件、今回入口12件・receipt親4件・runner path20件・候補binding19件を含む最終版で通過。実Windows junctionの4入口拒否も別途実測した。
+
+使用72%・残28%、今回上限80%の範囲内で検証済みの区切りまで完了。80%へ到達したという意味ではない。共通仕様・合成データの変更、実通信・発注・見張り起動・Claude公開・無料リセットは行っていない。9件のskip、HTML目視未実施、既存home移行/INTENT復旧/実データ契約の未採用は維持する。
+
+[Codex継続プロンプト](Codex継続プロンプト.md)、[候補所有と復旧範囲](RUNNER_RECOVERY_PLAN.md)、[現在の準備状況](PHASE2_READINESS.md)から次の作業を確認する。
+
+### 通知原本の照合漏れ修正（2026-09-11）
+
+独立結合試験の初回は1 passed / 8 failed。candidateのowner/day/side/hashを変更しても、通知準備と登録がruns結果・台帳だけを照合して進める不具合を再現した。notification_planの共通_prepare_lockedへ全candidate原本検証を追加し、Ledger/plan/binding/queue変更前に拒否するよう修正した。
+
+新規17件（欠損/INTENT/result不一致/outbox欠損も追加）が4.80秒で通過。既存の通知準備・キュー・模擬配信・照合50件も27.40秒で通過。製品はnotification_plan.pyのみ変更、実通信なし。全体結果は後続参照。詳細は[通知統合契約](NOTIFY_INTEGRATION_PLAN.md)。
+
+### 診断の深いJSON入力（追加反証）
+
+独立レビューで、保存manifestまたは管理markerの約5000段JSONを読むとRecursionErrorが漏れることを確認した。新規2件は初回2 failedとして再現した。通常のmarker不正による既存RunError契約は変更せず、深さによる解析不能を固定OBSERVATION_UNSAFEへ分類する限定修正を予定する。通知修正の全体実行後の追加として、最終実測を分けて記録する。
+
+### 最終実測（2026-09-11 16:10 JST）
+
+通知原本照合を含む全体は **1979 passed / 9 skipped / 517 warnings、273.82秒**。その全体収集後に追加した深いJSON2件と診断のRecursionError抑止は、診断関連 **47 passed、15.85秒** で検証した。後者込み全体1981件を再実行したとは表記しない。
+
+診断の深いmanifest/markerはNEEDS_RECONCILIATION・OBSERVATION_UNSAFE、候補空、修復/自動再開/現在シグナルfalseを返し、入力は不変。通常のmarker不正時RunErrorやCLI引数エラーの既存契約は変更していない。
+
+使用75%・残25%、80%上限内。実通信・発注・見張り・Claude公開は未実施。新規17件の通知境界と新規2件の診断境界を確定した。[通知契約](NOTIFY_INTEGRATION_PLAN.md)、[Codex継続プロンプト](Codex継続プロンプト.md)を参照。
+
+### 通知入口・接続後片付け・制御CLIの追加検証（2026-09-11、90%継続枠）
+
+通知準備・登録・模擬配信・照合にraw親パスと専用DB/sidecar/runs成果物の検査を接続した。独立新規21件が6.65秒で通過し、既存通知関連42件も24.02秒で通過した。通常sidecarを一律拒否する変更ではない。
+
+runnerは2本目のDB接続が失敗しても1本目を閉じ、台帳close・journal close・rollbackの失敗時も残りの接続の後片付けを試みる。新規4件と既存runner20件、計24件が5.45秒で通過した。closeそのものが失敗した場合にOS資源解放を保証するものではない。
+
+管理STOP CLIは設定・marker・clockの深すぎるJSONを固定エラーと終了2で拒否する。新規3件を含むCLI13件と通知入口21件、計34件が8.07秒で通過した。最初のclock試験は初回作成される空の協調ロックDBも不変と仮定して1件失敗した。既存契約で許容されるロックを事前作成し、制御・台帳・通知・時計・入力の不変という試験目的を保った。製品の時計更新順は変更していない。
+
+[制御CLI手順](MANAGED_CONTROL_CLI.md)の誤った `--settings-file` を実装どおり `--settings` に修正。Temp専用homeで実PowerShellから別Python processを起動し、STOPPEDとRESUMED、終了0、real_sent=falseを確認した。全体の最終実測は後続節を参照する。
+
+### runnerの成果物保存先を予約前に確認（2026-09-11）
+
+runごとの日付directory・run directory・既知6種JSON（失敗記録を含む）のlink/reparse/型不正を、DB接続前とロック取得直後に確認する。以前は最終JSON保存時の検出になり、台帳予約後に出力不能が分かる可能性があった。新規7件とrunner既存20件・接続後片付け4件、計31件が5.92秒で通過した。正常な未作成directoryと通常fileは許容する。同run完了結果の内容再承認を追加したものではなく、非協調の検査後path差替えやDB/複数成果物一括コミットは保証しない。
+
+### 永続通知キューと主系clockの整合（2026-09-11）
+
+Notifier.get_entry/flush/reconcile_sentは既存content_hash（kind・proposal_id・message）を再計算し、kind、recipient、JSON辞書/typeを検査する。get_entryは返却shapeを維持する。NEW→EXIT変更でSTOPを迂回するケース、本文/JSON/hash/recipient破損、後続破損による先行処理、SENT照合、正常再試行、空/限定keyの回帰を含む新規14件と既存関連、計105件が2.25秒で通過した。この記録時点のhash検証を示し、後続の履歴/日時検証は別途記録する。
+
+主系3経路×legacy/managedの6件は、hash破損をclock・予約・送信状態更新前に拒否する。初回は通知計画の無用な再保存で6件失敗したため、一致する既存planを再保存しないよう修正。欠損planの再生成は維持し、新規計8件が3.41秒で通過した。legacy側のSHM変化は試験fixtureのSQLite接続未closeが原因で、closingへ統一した。期待値は緩めず、閉じたDBで全file内容/mtimeと台帳の不変を確認した。
+
+keyとrecipientはhash対象外なので固定計画との別照合を維持する。標準JSONの重複key拒否や新hash/schema、全非協調writerの排他は追加していない。Codex単独の修正・試験であり、Claude独立レビュー済みとは扱わない。
+
+### 通知履歴・日時の先行検証とSENT照合（2026-09-11）
+
+後続の通知行のattemptsが壊れたJSONだと、先頭だけ模擬SENTになってから例外になる問題を再現した。共通の事前検査でattemptsを辞書list・各atをaware ISO日時、created_atをaware ISO日時、expires_at/claimed_atをNULLまたはaware ISO日時として確認する。get_entry内部列を追加しても公開返却shapeは維持する。新規11件で後続行のJSON/型/日時異常を拒否し、先頭のstub・claim・予算・alert不変を確認した。
+
+SENT照合は対象全件の台帳noticeを更新前に参照し、後続notice欠損が既にある場合に先頭だけSENTへ修復しない。実台帳を使う新規1件では、欠損観測時のseq/state不変、欠損解消後の正常照合、再実行の重複なしを確認した。書込loopでもnoticeを読み直すため、同じnoticeへ複数keyがある場合の二重更新を増やさない。検査後の外部変更や途中DB故障まで全件atomicにする契約ではない。
+
+新規検証と主系通知の対象5suiteは **49 passed、9.64秒**。全体実行の結果は後続節へ記録する。
+
+### 90%継続枠の初回全体結果と互換修正（2026-09-11）
+
+初回全体は **2049 passed / 1 failed / 9 skipped / 517 warnings、277.61秒**。失敗は通知recipient不一致の結合試験で、新get_entryのValueErrorが主系の既存RunError契約へ変換されていなかったもの。enqueueと模擬配信/照合の共通読取で固定RunErrorへ変換するよう修正した。
+
+その後の対象実行は30 passed / 1 failed（23.51秒）。拒否自体は期待どおりになったが、試験の「元行が不変か」の読取が別recipient設定を使っていたため、新get_entryの検証で止まった。確認時だけ元行を登録したsettingsを使うよう修正し、先頭行未作成・既存行完全一致・予約不変の期待は維持した。対象queue境界8件が8.16秒で通過。全体再実行は後続結果を参照する。
+
+追加読取レビューでは、未知stateがclock更新後にUNCHANGEDとして報告される問題と、深いJSONで読取状態表示にRecursionErrorが漏れる問題を再現。既存state・読取失敗の契約内で補強を継続する。
+
+### 未知の通知stateを通常の無処理と混同しない（2026-09-11）
+
+保存stateをBOGUSへ変更すると、主系がclockだけ進め、flushの状態filterにより対象外となってUNCHANGEDを返す問題をTempで再現した。既存の5状態（PENDING/SENDING/UNKNOWN/SENT/EXPIRED）を検証し、未知stateをget_entryと選択key確認で拒否する。Noneは全体の未知state有無を検査し、明示keyは指定範囲だけ、空keyは既存の無操作を維持。terminal本文まで新たに全件検査する変更ではない。
+
+ops新規13件を含む関連118件が3.14秒で通過。主系legacy/managedのenqueue/deliver/reconcile新規6件を含む結合37件も16.95秒で通過した。拒否時はclock・全file内容/mtime・台帳/予約が不変である。既存の状態遷移・hash/schema・送信成否不明の意味は変更していない。
+
+### 状態表示の深いJSONを確認不能へ分類（2026-09-11）
+
+進捗・日次receipt・summary・managed marker/clockの深いJSONで公開読取APIにRecursionErrorが漏れる問題を再現し、各読取境界で既存UNKNOWN/NEEDS_RECONCILIATIONへ分類するよう修正した。共有parser、managed_stop_policy、_clock、seal書込の契約は維持する。新しいサイズ上限・復旧・予約解除・原子的snapshot保証は追加しない。
+
+新規11件が8.06秒で通過し、全file hash/mtime不変とHTMLの非承認表示も確認した。複製fixtureの固定STOP pathが元homeを指して早期拒否される検査漏れをレビューで発見したため、試験用markerを新homeに結び直してreceipt hashを更新し、各破損前に公開3APIがCLEAR/VERIFIED_HISTORY/CLEARを返すことを必須にした。これにより目的の深JSONまで到達していることを確認する。これは試験fixtureの構築であり、実行用homeの移行機能を実装したものではない。
+
+既存operations/managed 47件、daily receipt 61件（4 skipped）も通過。既存runner診断12件は10.99秒で通過し、以前の深marker分類を維持した。最終全体実測は後続参照。詳細は[状態表示契約](OPERATIONS_STATUS_CONTRACT.md)。
+
+### 検証済み区切り（2026-09-11 16:40 JST）
+
+**全体2080 passed / 9 skipped / 532 warnings、312.66秒**。今回の新規99件と、前回の全体測定後に追加済みだった深JSON2件を含む。先のrecipient試験失敗は解消し、最新ソースで全体を再実行した。使用82%・残18%、今回の90%停止目安内。
+
+結果は模擬経路の検証であり、実通信・発注・見張り・Claude公開は起動していない。次の並列レビューは通知期限と台帳、再試行キーとattempt履歴、通知plan bindingの内容照合に限定する。新仕様を推測で採用せず、既存の期限・同一キー・固定plan契約に対する実装不整合があれば補強する。
+
+### 95%継続枠：通知期限・retry key・plan本文の原本照合（2026-09-11）
+
+開始時の公式値は使用85%・残15%。ユーザーの最新指示で停止目安を95%へ更新した。前回2080件の全体通過後の追加であり、この節の個別結果だけを全体再実測とは扱わない。
+
+台帳Proposalの期限が07:05でも、保存通知期限だけ08:59へ変更すると07:10に模擬SENTとなる不具合、UNKNOWNのretry_keyだけ変更すると旧attemptと異なるキーで再試行する不具合をTempで再現した。get_entryを含む共通事前検査で、候補期限を台帳と同一時点で照合し、rowの非空retry_keyと各attempt.retry_keyを一致させる。候補期限欠損は拒否し、非候補期限Noneは維持する。
+
+独立試験の初回は10 passed / 2 failed。1件はUTC表記の同一時点をJST化前にdate()へ変換して誤EXPIREDにする製品不具合で、候補期限と非候補登録日の双方をJSTへ正規化後に締切計算するよう修正した。もう1件はUNKNOWNからsuccess再試行後の状態をUNKNOWNと期待していた試験の前提誤りで、既存のSENT遷移へ修正した。同一retry_keyの期待は維持した。新規13件は0.42秒、関連131件は3.13秒で通過。主系legacy/managedの改変拒否6件と既存回帰、計29件も12.35秒で通過した。
+
+保存plans.bodyだけを変更してもplans.hash/cards.hashが一致し、欠損JSONへ改変本文を再出版する不具合も再現した。JSON側も同じ改変内容ならenqueueまで通る。保存bodyのcanonical digestを再生成preparedと照合し、返却・欠損JSONの再生成には確認済みの再生成値を使うよう修正した。新規11件が3.35秒で通過し、関連38件も26.80秒で通過。meta/key/message、malformed/deep JSON、原本hash対照、正常再読・欠損復元を確認した。
+
+hash/schema、状態別attempt件数、UUID形式、kind/side契約は変更していない。初回の空attemptから過去のretry_keyは証明できず、行と全履歴を整合的に書き換えた場合の検出は保証しない。既存非協調変更・全件atomicityの制約を維持する。全体再実行結果は後続節へ記録する。
+
+### 通知原本照合の全体実測（2026-09-11 17:09 JST）
+
+**2110 passed / 9 skipped / 532 warnings、310.03秒**。上記の新規30件を含めた全体再実行が完了した。公式アカウント使用87%・残13%、今回の上限95%。通知本文生成がcontexts/settingsを書き換えないことも独立したTemp試験1件で確認した（全体件数には含めない）。
+
+直接Notifier APIでは、保存履歴より前のnowを渡すとflushの試行履歴・updated_atやreconcileの台帳反映時刻が逆行することを再現した。主系の配信・照合入口には既存の時刻比較があり、この直接APIの制約追加は未採用として記録する。台帳一般の作成時刻下限を課す案は既存Q04の不採用判断と異なるため、推測で変更しない。詳細は[通知統合契約](NOTIFY_INTEGRATION_PLAN.md)。
+
+### シグナル・パケット入口の戦略名事前検証（2026-09-11 17:12 JST）
+
+未知のstrategy名と未存在homeを指定すると、候補生成の拒否より前にmarket.duckdbを作る問題を修正した。公開run_signalsは接続前にstrategyを一度生成し、transaction内で同instanceを使う。packet入口は副作用のない名称検証をmapping読取・接続前に行い、既存3引数の内部helperとtransaction内での一度の生成を維持する。戦略名・パラメータ・判定規則は増やしていない。
+
+独立新規8件で両入口の未知名拒否、home非作成、既存DBのhash/mtime不変、正常合成候補、strategyの一度の生成を確認した。共通受入8件とpacket・市場回帰を含む **58 passed / 30 warnings、34.75秒**。実CLIのsignals/packetsも終了コード2、tracebackなし、home非作成をTempで確認した。直前の全体2110件にこの新規8件は含まれず、追加後の全体再実行とは表記しない。
+
+今回の新規リポジトリ試験は計38件。Codex単独で修正・検証した。使用量は87%・残13%、95%を上限として扱い、消費を目的に未決契約を追加しない。次は[Codex継続プロンプト](Codex継続プロンプト.md)を入口に、通知時刻の保留契約と入力準備状況を確認する。両見張り、Claude公開、実審査・LINE・注文は起動していない。
+
+### 95%枠の継続：審査資料と失敗時の例外保持（2026-09-11）
+
+再開時は使用88%・残12%。render_packetの参照資料検査がlistだけを再帰し、JSON配列へ変換されるtuple内の他AI verdictを通す問題を再現した。tupleも同じ禁止key検査へ通す最小修正を行い、新規8件を含む65件が0.60秒で通過。正常tupleとlistは同一JSONで入力も不変。禁止語の意味的推定や自由文全体の検査を新設していない。
+
+run_signals、packet生成、load_synthetic、fakeを用いたjquants.fetchの失敗後、ROLLBACKの二次失敗が元例外を置き換える問題を補強した。backtestの既存規則と同じbest-effort ROLLBACKにし、元例外を再送出する。候補系の独立10件で生成/COMMITの通常例外と割込み系例外、接続context終了、正常commitを確認。取込は新規2件を含む関連19件が4.68秒で通過し、INSERT失敗時の元例外objectを確認した。ROLLBACKやDB解放の成功を保証する変更ではない。
+
+今回の追加は計20件。前回全体後のstrategy検証8件と合わせた全体実測は後続へ記録する。DATA_INPUT_READINESSの冒頭・未充足・試験対応表も現在の数値/保存先/transaction検査に合わせて更新した。実API適合・業務データ完全性・未決契約の採用を追加したわけではない。
+
+追加の独立レビューでは、取込2入口のINSERT通常例外・COMMIT通常例外・INSERT割込み系例外をTempで確認し、6件成功、元例外保持・ROLLBACK試行・接続context終了を確認した。この6件はリポジトリの全体件数には含めない。HTML3表示の入力escapeと、運用状態・履歴・模擬シグナルの非承認表示も読み取り照合し、具体的な追加欠陥は確認されなかった。ブラウザー目視は未実施のままである。
+
+次工程の未決事項は[限定契約の比較表](NEXT_CONTRACT_DECISIONS.md)へ整理した。直接通知APIの時刻下限、価格調整、公表日推定、原本・単元・eventを分け、推奨案と互換影響、採用後のオフライン受入を記載する。推奨案は自動採用ではない。直接通知APIの時刻下限について、この対話で採否を質問した。回答前は製品へ適用しない。
+
+### 最新全体実測（2026-09-11 17:39 JST）
+
+**2138 passed / 9 skipped / 562 warnings、278.58秒**。今回の新規20件と前回全体後の8件を含む最新版で確認した。公式アカウント使用89%・残11%、上限95%は維持。停止は使用量上限到達ではなく、次の互換性変更の採否待ちである。直接通知APIの時刻下限は未実装。主系の既存時刻ガード、実通信・両見張り・Claude公開禁止を維持する。
+
+続きは[Codex継続プロンプト](Codex継続プロンプト.md)、採否の具体案は[限定契約の比較表](NEXT_CONTRACT_DECISIONS.md)を参照。
+
+### 直接通知APIの時刻下限を限定採用（2026-09-11）
+
+直前に提示した限定変更への再度の続行指示を受け、採否待ちを解除して実装した。flushの処理対象active行、reconcile_sentの対象SENT行について、nowがcreated_at・updated_at・全attempt.at以後であることを全副作用前に検査する。同時刻とUTC等で表した同一時点を許可する。空選択、指定外行、既存の終端状態filterを維持し、Ledger一般のQ04、schema、hash、状態遷移は変更しない。
+
+opsの新規17件が1.32秒、関連58件が3.72秒で通過。主系legacy/managed×作成/更新/試行時刻×配信/照合の新規12件も19.10秒で通過し、拒否前後の全file hash/mtime、管理clock、台帳を維持した。今回は新規29件。全体の最新版実測は後続参照。開始時89%・残11%、段階確認時90%・残10%、停止目安95%を維持する。
+
+追加の独立Temp4ケースでは、有効なkeyを明示選択したflush/reconcileが未来時刻の未選択行を変更しないこと、flushが未来時刻のSENT終端行を処理対象から除外すること、Ledgerの作成前時刻でのAPPROVED記録というQ04互換を確認した。これら4ケースは全体テスト件数に含めない。
+
+市場入力の判断材料として[人工データ実験](DATA_CONTRACT_EXPERIMENTS.md)を作成した。調整OHLC/出来高の4組合せ、別期間取込後も残る推定公表日と最新batchのFalse、lots省略100とevent欠損拒否の差を確認した。実サービス適合・新mode・既存DB移行は未採用。使用91%・残9%の段階で記録した。
+
+### 最新全体実測（2026-09-11 17:53 JST）
+
+**2167 passed / 9 skipped / 562 warnings、623.24秒**。新規29件を含む最新ソースで確認した。公式アカウント使用92%・残8%、95%上限内の検証済み区切り。直接通知APIの採否待ちは解消し、限定実装・検証・文書反映まで完了した。
+
+市場入力3契約は未採用で、判断材料は[人工データ実験](DATA_CONTRACT_EXPERIMENTS.md)と[限定契約の比較表](NEXT_CONTRACT_DECISIONS.md)。実通信・実審査・LINE・注文・両見張り・Claude公開は起動していない。続きは[Codex継続プロンプト](Codex継続プロンプト.md)。
+
+### 98%枠：通知・台帳の失敗処理と既存CLIの結合検証（2026-09-11）
+
+最新ユーザー指示で上限を98%へ更新、開始時92%・残8%。来歴検査の専用CLIは既存のprovenance_fixture_cli inspectと重複すると確認したため追加を取りやめ、既存入口の結合検証に絞った。重複製品ファイルは残していない。
+
+NotifierのSTOP・RESUME・enqueue・flush claimとLedger._commitをbest-effort ROLLBACKへ統一した。通常例外だけでなく割込み系でも取消を試み、二次失敗が最初の例外を置き換えない。送信callback例外をUNKNOWNへ確定する処理、予算、状態遷移、検証拒否の監査COMMITは維持する。成功時のLedgerメモリ更新は従来どおりCOMMIT後。COMMIT成否不明時の自動補完は実装しない。
+
+新規試験は通知9件・台帳8件・既存CLI5件の計22件。通知は実ROLLBACK後に二次例外を注入し、元例外・部分変更なし・送信未開始・接続再利用を確認。台帳もINSERT/COMMIT前の失敗と割込みで未確定イベント/監査の不変を確認した。これらは実際にROLLBACKを実行できない故障でも復旧を保証する意味ではない。CLIは正常/破損/別mode/引数エラー、全file hash/mtime不変、入力値非漏洩を確認。単独は9件0.70秒、8件0.27秒、5件2.14秒。関連通知70件・来歴CLI37件も通過した。
+
+使用94%・残6%を確認して全体再検証を開始。最新全体結果は後続へ記録する。共通仕様・実データ契約・見張りは変更していない。
+
+### 最新全体実測（2026-09-11 18:53 JST）
+
+**2189 passed / 9 skipped / 562 warnings、602.49秒**。新規22件を含む最新版で全体検証が完了した。公式使用94%・残6%、上限98%以内の検証済み区切り。通知と台帳の二次障害補強、既存来歴CLIの読取結合試験を確定し、進行中の検証は残っていない。
+
+次は[Codex継続プロンプト](Codex継続プロンプト.md)を参照。未採用の市場入力契約は[比較表](NEXT_CONTRACT_DECISIONS.md)と[人工データ実験](DATA_CONTRACT_EXPERIMENTS.md)を判断材料とする。実通信・見張り・Claude公開・リセットは開始していない。
+
+### 99%枠：通知時刻と候補記録の失敗処理（2026-09-11）
+
+ユーザー指定の上限を99%へ更新。開始時95%・残5%、全体試験中の確認は96%・残4%。notification_planの通知clock記録とrunnerの候補journal更新で、割込み系例外も含めてROLLBACKを試行し、二次ROLLBACK例外による元例外の置換を防ぐ。
+
+追加試験は通知clock8件、候補journal4件の計12件で全件通過。clockの関連試験は16 passed（16.85秒）、journalは4 passed（4.33秒）。実ROLLBACK後の二次障害を注入し、元例外の同一性、取消試行、clock表の有無と行の不変、接続解放を確認。journal失敗ではINTENT・承認済みnotice・予約額を保持し、outboxの部分書込が残らないことを確認した。
+
+通知clock試験は当該DB処理の検証であり、先行する管理clockを含む全DBの一括不変を保証しない。runnerの外側のfailure.json記録やclose自体の二次障害は今回の変更範囲外。取消不能・COMMIT成否不明・INTENTの自動復旧や予約自動解放は追加しない。全体試験の最新結果は後続に記録する。
+
+### 最新全体実測（2026-09-11 19:19 JST）
+
+**2201 passed / 9 skipped / 562 warnings、709.15秒**。追加12件を含む最新ソースの全体試験が終了コード0で完了した。公式Codex使用96%・残4%、上限99%以内の検証済み区切り。実行中の検証はない。試験出力はDropbox外のTempへ保存した。実通信・注文・見張り・Claude公開・リセットは開始していない。
+
+次は[Codex継続プロンプト](Codex継続プロンプト.md)を読む。未採用の市場入力契約は引き続き[限定契約の比較表](NEXT_CONTRACT_DECISIONS.md)を参照する。
+
+### 第18回Claudeレビュー対応（2026-09-12 07:37 JST）
+
+W01を修正し、直接stop/resumeも未来event_atをINVALIDで副作用前拒否する。遅着と同時刻の扱いは維持。W02は限定採用し、別key・同一候補・内容変更の場合だけ旧key/state/duplicate=Trueにchanged=Trueを追加する。本文上書きや再送は行わず、完全重複と同key内容差の既存応答を維持する。
+
+新規は三経路時刻回帰8件とNEW/EXIT重複契約6件の計14件、全件成功。ops/から指定範囲 `../common/tests/phase2 ../build-codex/tests tests` を実測し、**2216 passed / 2 failed / 9 skipped / 562 warnings、347.37秒**。失敗はClaude W01a/bの未来操作を成功扱いする前提だけ（B）。INVALID拒否と矛盾するため、既存試験を変更して数値を合わせず、そのまま残した。W01c/d、W02、W03〜W08は成功。全件通過ではない。
+
+詳細・再現コマンド・残制限は[第18回対応報告](OPS_REVIEW18_REPORT.md)。common/tests直下のフェーズ1受入8件は今回指定の対象外。前回2201件とは対象範囲が違い、Claude追加11件も今回初めて含む。共通仕様・既存受入・Claude試験は無変更。
+
+ユーザー依頼で無料リセットを1回使用後、今回は上限20%。最新公式使用3%・残97%。実通信・注文・両見張り・Claude起動/公開は行わず、追加リセットも行っていない。続きは[Codex継続プロンプト](Codex継続プロンプト.md)。
+
+### 第18回残件の解消と追加の時刻比較修正（2026-09-12 07:56 JST）
+
+ユーザーのCodex引継ぎ指示を受け、Claude原案W01a/bの未来操作の戻り値2行だけをINVALIDに更新した。後の本物のSTOP/RESUMEと停止状態を確認するassertは維持。Claude独立再レビュー済みとは表記しない。
+
+独立検証で、保存event_atにUTC/JSTが混在するとSQL MAXの文字列比較が最新制御時刻を誤る問題を再現した。既存_jstで解析したdatetimeの最大を比較するよう修正し、両方向の遅着制御とnaive時刻の拒否を新規4件で確認した。保存履歴の自動修復、既存home移行、制御自動再実行は行わない。W02の主系呼出しも確認し、別key衝突時に固定カード照合が拒否する既存契約を維持した。
+
+**全体2230 passed / 9 skipped / 562 warnings、369.25秒、失敗0件。** common/tests全体を対象とし、前回の指定範囲外だったフェーズ1受入8件も含む。途中で中断した全体実行の件数は合算していない。最新使用4%・残96%、上限20%。進行中の検証はない。
+
+詳細は[第18回対応報告](OPS_REVIEW18_REPORT.md)、次回は[Codex継続プロンプト](Codex継続プロンプト.md)。残る市場入力の未採用契約は[比較表](NEXT_CONTRACT_DECISIONS.md)で確認する。実通信・見張り・Claude公開は引き続き開始していない。
+
+### 専用入力モード第1段階（2026-09-12 08:14 JST）
+
+ユーザーの「新しい専用モードで進める」を受け、既存研究動作を維持したまま `strict_input_v1` を追加した。人工原本のhash・JSON参照・銘柄集合を照合し、部分調整、RAWと調整値の混在、推定公表日、未来の価格/公表、原本・単元・eventの不足を拒否する。CLIは安全なJSON読取と固定エラーを使用し、DBを開かず、入力本文を結果へ転記しない。
+
+実装契約とPowerShellのフォルダ移動を含む操作例は[専用入力モード](STRICT_INPUT.md)、段階設計は[設計メモ](STRICT_INPUT_DESIGN.md)、採用範囲は[契約比較表](NEXT_CONTRACT_DECISIONS.md)。人工原本の整合検査であり、実APIの適合・原本の真正性・売買適格性を証明しない。`ready_for_live` と `current_signal` は常にfalse。価格鮮度、単元有効期間、公表時刻の出所、期間/ページ網羅性、取込run/訂正履歴の永続化は残工程。既存home移行・候補生成への接続は行っていない。
+
+新規API36件・CLI4件の **40件成功（0.54秒）**。最新全体は common/tests・build-codex/tests・ops/tests を対象に **2270 passed / 9 skipped / 562 warnings、354.29秒、失敗0件**。試験用DB等はDropbox外のTempへ配置した。追加試験を含む全体検証は完了し、実行中の試験はない。例示JSONの実CLIも検査成功を確認した。
+
+最新公式使用 **7%・残93%**、今回上限20%。実通信・注文・両見張り・Claude起動/公開は開始していない。継続手順は[Codex継続プロンプト](Codex継続プロンプト.md)。
+
+### 専用入力の参照修正と次段階整理（2026-09-12 08:18 JST）
+
+追加レビューで、JSON Pointerの配列添字にUnicode数字を許す問題と、空文字による文書ルート参照を拒否する問題を修正した。配列番号はASCIIの正規形に限定し、オブジェクトのUnicode/空/エスケープしたキーを引き続き許可する。ルート参照は4種類を別々の原本文書へ保存した人工入力で確認した。
+
+追加12件、専用モードAPI/CLI **52 passed、0.54秒**。今回の修正に絞った実測であり、修正後の全体試験は再実行していない。前回全体は2270 passed / 9 skipped / 562 warnings。既存研究経路のコードは変更していない。
+
+[次段階メモ](STRICT_INPUT_NEXT.md)に不足証拠と試験境界を整理した。新たな営業日・外部API・永続化の契約を採用した意味ではない。終了時公式使用8%・残92%、上限20%。次回は[Codex継続プロンプト](Codex継続プロンプト.md)。
+
+### 20%上限で確認なし継続：入力の3工程（2026-09-12 08:40 JST）
+
+1. [要求範囲の検査](STRICT_COVERAGE.md)：人工原本の期待ページ集合・銘柄日付集合、hash、重複、期間外を検査。新規API83件＋CLI7件の90件。
+2. [選択価格原本との紐付け](STRICT_PRICE_COVERAGE.md)：検査済み原本の実際の参照先から行を導出して要求範囲と照合。元文書/日付の取り違え、日時範囲超過、不正Unicodeも拒否。新規API26件＋CLI4件の30件。既存専用入力を含む関連172件が1.44秒で成功。
+3. [人工V2ページ連鎖](V2_PAGE_CHAIN.md)：同一検索条件、後続キー、循環、途中欠落、最終終了を検査。新規API31件＋CLI5件の36件。既存V2形状/CLIを含む198件が0.92秒で成功。
+
+**全体実測は価格原本の紐付けまで2402 passed / 9 skipped / 562 warnings、318.93秒、失敗0件。** ページ連鎖36件はこの全体収集後の追加であり、上記198件の別実測で確認した。2438件を一括実測した意味ではない。前段の範囲検査までの全体は2372 passed / 9 skipped / 562 warnings、351.29秒。全試験プロセスは終了済み。試験DB等はDropbox外のTemp。3つのサンプル実CLIも成功した。
+
+最初の範囲CLI統合は巨大文字列を試験IDにしたためWindowsの準備処理で2 errors。短いIDへ修正後、巨大入力の拒否を含め全関連試験が成功した。コードレビューで指摘されたページ別の行所属は、現契約の全体集合一致の保証外として明記。別文書の代替一覧を使わない価格原本の結合は次の限定工程で実装した。既存の研究処理、既存単ページV2形状検査は変更していない。
+
+[公式公開資料](JQUANTS_PUBLIC_DOC_UPDATE_20260912.md)で価格列・ページングと一貫性の限界・信用残のDateの意味・9月28日予定新仕様を確認した。実API取得は行っていない。単元有効期間・公表完了時刻・実際の原本等の不足は[必要な根拠](REAL_DATA_EVIDENCE.md)へ整理した。人工検査成功を実売買適格性へ昇格しない。
+
+**完成までの大まかな工程と現在地は[進捗表](COMPLETION_ROADMAP.md)。** 模擬日次基盤は完了、実データ受入準備は進行中。実保有からのSELL生成、実二者審査/通知、異常終了からの復旧、実日次受入が残る。使用11%・残89%、上限20%。途中の再確認は不要。次回は[Codex継続プロンプト](Codex継続プロンプト.md)。
+
+### 単元・イベントの適用期間検査（2026-09-12）
+
+[strict_validity_fixture_v1](STRICT_VALIDITY.md)を追加した。既存strict_inputの検査後、実際に選択されたlots/events行のcanonical hashへ期間証拠を結び、開始≦基準時点＜終了の半開区間を確認する。証拠欠損・重複・hash不一致・別の値・適用前・期限切れ・timezone欠損を拒否する。人工入力の宣言規則であり、実提供元の期間規則や真正性を証明しない。
+
+新規API38件・CLI5件、計43件。既存strict_input52件と合わせて **95 passed、0.64秒**。実CLIのサンプルも証拠2件で成功。既存台帳不変、入力不変、本文を返さないことを検証。全体実測は後続の最新節を参照する。
+
+[保存・訂正契約案](STRICT_EVIDENCE_STORAGE_PLAN.md)に原本・取得・正規化・時点証拠・訂正・選択記録の意味を分けた。期間内でも後から入手した証拠を過去の判定へ使わないこと、同一取得の再投入と別取得の同値を区別することを記載した。設計案であり、DB取込・移行・訂正保存の採用/実装ではない。
+
+公開資料再調査では単元適用期間や公表完了時刻を確定する追加根拠を取得できなかった。TOPの一般説明を、別々の決算予定endpoint全体の提供範囲へ拡大解釈しない。既存の[不足表](REAL_DATA_EVIDENCE.md)を維持する。実API・実審査・通知・見張りは開始していない。
+
+### 最新全体実測（2026-09-12 08:54 JST）
+
+**2481 passed / 9 skipped / 562 warnings、293.60秒、失敗0件。** common/tests・build-codex/tests・ops/testsを一括実行した。今回の適用期間43件と、前回は別実測だったページ連鎖36件も含む。全試験は終了済み。試験DB等はDropbox外のTemp。既存の研究・取込コードを変更せず、限定オフライン検査を追加した。
+
+公式使用 **14%・残86%**、上限20%。実データ受入準備の工程2を進行中。[単元・イベント期間検査](STRICT_VALIDITY.md)は完成、[保存・訂正契約](STRICT_EVIDENCE_STORAGE_PLAN.md)は設計案。実原本の根拠・当時の利用可能時刻・取込・日次接続は残る。[全体進捗](COMPLETION_ROADMAP.md)、[継続プロンプト](Codex継続プロンプト.md)を参照。
+
+## 2026-09-12 09:05 JST 取得・訂正履歴の人工受入
+
+人工証拠の履歴検査evidence_history_fixture_v1を追加。API29件・CLI5件の計34件、strict_inputを含む関連86件は0.56秒で成功。最新全体は2515 passed / 9 skipped / 562 warnings、310.13秒、失敗0件。試験は終了済み。使用16%・残84%、上限20%。
+
+同一取得の再投入はNO_OP、同一IDの内容差は全体拒否。訂正は同じsubjectの末尾版を参照し、判定後に記録された版を過去の選択へ混ぜない。Codex別エージェントのコード・文書レビューを実施。実行例も取得2/版2/選択1/未来1で成功した。DB保存や実入力への接続は追加していない。
+
+契約・解釈は[人工履歴モデル](EVIDENCE_HISTORY_FIXTURE.md)、次の設計案は[履歴と適用期間の結合](HISTORY_VALIDITY_BINDING_PLAN.md)。全版が未来でも内部整合だけなら成功できるため、選択0を証拠充足と扱わない。
+
+[現在の工程](COMPLETION_ROADMAP.md)・[継続プロンプト](Codex継続プロンプト.md)。
+
+## 2026-09-12 10:11 JST Opusレビュー対応完了
+
+全体2580 passed / 9 skipped / 562 warnings、361.00秒、失敗0件。Claude追加54件とCodex追加11件を含む。関連185件は0.82秒。使用18%・残82%、上限20%。試験は終了済み。
+
+[対応表](OPUS_EVIDENCE_REVIEW_RESPONSE.md)にF-01〜F-10の採用判断を記録。[結合設計](HISTORY_VALIDITY_BINDING_PLAN.md)へF-01〜F-08を反映し、専用例を追加。F-09の防御処理/意図コメントとF-10の1MiB境界説明/試験を実装した。既存試験の期待値は変更していない。コード/ID正規形とreceipt時刻正規化は次の結合版の設計で、結合APIは未実装。
+
+Claude実測174件・無作為検査は[原レビュー](Claude_Opusレビュー_証拠履歴.md)の報告値であり、上記Codex実測とは区別する。残工程は共用選択モデル/版境界/結合APIの実装。実接続・見張り・Claude公開は未実施。
+
+[継続プロンプト](Codex継続プロンプト.md)へ次工程を保存済み。
+
+## 2026-09-12 12:51 JST 使用量上限による停止
+
+第2回レビューを読取確認したが、開始時公式使用20%・残80%で指定上限に達したため、修正・追加試験・再検証は未着手。前回全体2580 passed /9 skipped /562 warningsは変更前の実測で、今回の再実測ではない。第3回レビュー依頼へのB更新も未実施（未修正を修正済みとして依頼しない）。
+
+再開時はClaude_Opusレビュー_証拠履歴_第2回.mdと最新ユーザー依頼に従う。優先R2-01: 結合v1=history_validity_binding_fixture_v1、依存3モードv1、receipt canonical JSON完全一致。F01は結合境界のみ。UTC正規化は履歴v2/結合v2同時導入まで延期。R2-02: strict_validityのdata[input]から参照解決までtryへまとめas_of None固定拒否。既存5試験を変更せず専用新規ファイルに5経路追加し合計10件。R2-03: mode/source/status/selection_sha256と閉じた9理由を固定。R2-04〜09: 判定後訂正件数は成功非阻害、subject絞込可だが残すsubjectの未来entry全保持、例にmode/source追加、コード6箇所と同一性、1MiBは束全体で件数概算に過ぎない点、未来余分/訂正あり成功/書式拒否の反証を追記。完了後README/継続文書/キャッチボールBを更新する。
+
+実接続・見張り再開・Claude公開なし。上限引上げまたは使用量回復後に再開する。
+
+## 2026-09-12 16:05 JST 第2回レビュー対応
+
+R2-01〜09対応完了。結合v1は3つのv1に依存しreceipt完全一致を維持、UTC正規化は履歴/結合v2同時導入へ限定。出力13キー・理由9種、集合/未来訂正/書式適用箇所を固定。専用例へmode/sourceを追加。R2-02防御5件を新規追加し既存5件と計10件、関連195 passed /2.01秒。既存試験期待値は変更なし。全体再実行はしておらず2580件は変更前の前回実測。
+
+残工程は結合API本体・内部共用選択モデル。第3回依頼は[キャッチボール](Claude_Opusキャッチボール.md)。上限は使用40%・残60%へ変更済み。実接続/見張り/Claude公開は未実施。
+
+## 2026-09-12 16:20 JST 第3回レビュー対応
+
+R3-01〜07を結合案へ反映。期間証拠の事前形検査、5段の拒否優先、時点不一致時matched=0/digest=null、INPUT_*写像、required独立算出、4件数ゼロ、内側CLI診断を固定。実装コード/既存試験期待値は変更なし。Claude追加11件を含む関連206 passed /1.26秒。全体再実行なし、2580件は過去の変更前実測。使用22%・残78%、上限40%。結合API本体/境界検査は未実装。
+
+第4回依頼は[キャッチボール](Claude_Opusキャッチボール.md)。実接続・見張り・Claude公開は未実施。
+
+## 2026-09-12 16:33 JST 第4回レビュー対応
+
+R4-01〜06対応完了。段2を存在するmodeの値差のみへ限定、非dict/欠落は段3。時点不一致は段5内で単独打切り。共用モデルのdecision_at/as_of二重評価、空証拠の写像、結合版差の意図、遅延INPUT_*の段3結果への復帰を明記。コード/既存試験/例は変更なし。Claude追加30件を含む関連236 passed /1.01秒。全体再実行なし（2580件は過去実測）。使用22%・残78%、上限40%。結合API/境界/内部共用モデルは未実装。
+
+[結合案](HISTORY_VALIDITY_BINDING_PLAN.md)の旧曖昧箇所を直接修正。第5回依頼は[キャッチボール](Claude_Opusキャッチボール.md)。実接続/見張り/Claude公開は未実施。
+
+## 2026-09-12 22:48 JST 新チャット引き継ぎ確認
+
+実ファイルを確認し、第5回レビューは未受領（指定ファイルなし）。最新成果は第4回対応、キャッチボールBは第5回依頼。コード・既存試験・設計は変更せず、今回の試験再実行なし。関連236 passed /1.01秒は前タスクのCodex実測、全体2580 passed /9 skipped /562 warnings /361.00秒は第2回対応前の過去実測であり、今回の結果ではない。
+
+継続プロンプトへこのチャットでの受領0/20と20件ごとのNew Chat移行ルールを保存。次は第5回レビュー受領後の対応。内部共用選択モデル・結合API/CLI・段階別反証試験・必要時の全体再検証は残工程。依頼の実送信・実接続・見張り再開・リセットはしていない。
+
+公式アカウント共通使用1%・残99%、上限40%を維持。終了JST時刻: 2026-09-12 22:48 JST。
+
+## 2026-09-13 07:34 JST 第5回レビュー対応
+
+R5-01〜05対応完了。段2をキー集合に依存しない直接mode検査へ固定、その他の部品版差/origin差を段3のINVALID_BUNDLEへ写像。correctedをas_ofで選択がある必須subjectへ限定。v1評価は一致時1回/不一致時as_ofで1回、不一致時strict_validity非呼出。CLIの1MiBは段1前、超過は固定stderr・終了2・stdout空へ確定。
+
+Codex実測：関連14ファイル270 passed /2.43秒（Claude第5回追加30件を含む）。コード・既存試験・例は変更なし、文書修正のみ。参照試験は結合実装の検証ではない。全体再実行なし。2580 passed /9 skipped /562 warnings /361.00秒は第2回対応前の過去実測。Claudeの270件/1.13秒・無作為検査とは区別する。
+
+内部共用選択モデル、結合API/CLI、段階別反証試験、必要時の全体再検証は未完了。第6回依頼をClaude_Opusキャッチボール.mdへ保存（実送信/自動公開なし）。実API・売買審査・LINE・証券接続・発注・見張り再開・リセットは実施していない。
+
+このチャットでの受領1/20（第5回を初受領）。公式アカウント共通使用1%・残99%、上限40%。終了時刻: 2026-09-13 07:34 JST。
+
+
+## 2026-09-13 07:55 JST 第6回対応・結合v1実装
+
+R6-01〜04の文書反映と、history_validity_binding_fixture_v1のAPI/CLI・内部共用選択モデルを実装した。安全JSON読取流用、段3のinspect_strict_input評価、correctedの限定、空履歴/空期間証拠の段差を明記。既存履歴v1の公開出力・receipt canonical完全一致・再取得/NO_OP/線形訂正を維持して内部を分離した。コード/ID追加書式は結合境界だけ。
+
+Codex全体実測：common/tests・build-codex/tests・ops/testsで2728 passed /10 skipped /562 warnings、305.83秒、失敗0件。全体開始後に追加した境界19件はこの件数に含まれない。新規専用4ファイルを最終版で別途実行し62 passed /1 skipped、0.64秒（追加19件を含む）。従って全体一括2747件とは表記しない。既存関連15ファイル299 passed /1.17秒もCodex実測。Claude第6回299件/1.09秒・無作為検査とは別物。以前の2580件は過去実測。
+
+新規skip1件は実symlink作成のWindows権限不足。CLIは既存安全読取器を流用し、1MiBちょうど/+1byte、重複キー、非有限値、固定エラー、API非呼出を検証。全体には既存skip9件も残る。人工例の実CLIはrequired=matched=2、extra=corrected=0で終了0、period_evidence_timed/ready_for_live/current_signal=falseを確認。試験は終了済み。PYTHONDONTWRITEBYTECODE=1、pytestキャッシュ無効、試験TempとAI_TRADER_HOMEはDropbox外。
+
+Codex配下3体で履歴共用モデル、製品API反証、CLIを分担。親の統合レビューで選択hash失敗の固定SELECTION_HASH_INVALID応答が例外になる退行を検出し、既存応答を復元して専用故障注入試験を追加した。Codex独立コード確認は完了したが、今回の実装をClaudeレビュー済みとは扱わない。既存試験期待値・共通仕様・合成データ・専用例は変更なし。
+
+次は第7回の独立実装レビューと指摘対応。依頼はClaude_Opusキャッチボール.mdへ保存済みで実送信・自動公開は未実施。DB保存、実原本/期間/公表・入手時刻の根拠確定、日次シグナル接続、実二者審査/通知は残る。履歴v2/結合v2のUTC正規化は未実装。実API・売買AI審査・LINE・証券接続・発注・見張り再開・リセットは実施していない。
+
+このチャットでの受領2/20（第5回・第6回、重複なし）。公式アカウント共通使用5%・残95%、上限40%。終了時刻: 2026-09-13 07:55 JST。
+
+
+## 2026-09-13 08:18 JST 第7回対応と次工程設計
+
+R7-01〜03対応完了。成功条件へreason_codes空を明記。AttributeError追加は今回見送り、既存6種類の結合API例外境界を維持する理由と将来検討範囲を記録。2銘柄4subjectの複合欠落/hash差/期間不適合・corrected・reason非空の件数分配をCodex専用新規6試験で固定。製品コード・既存試験期待値・専用例・共通仕様・合成データは変更していない。
+
+Codex実測：関連21ファイル463 passed /1 skipped、1.64秒（Claude第7回96件とCodex追加6件を含む）。skipは実symlink作成権限不足。全体再実行は行っておらず、前回2728 passed /10 skipped /562 warnings、305.83秒は前回の全体実測で、後続19件・今回追加群を含む最新全体とは表記しない。Claudeの458件/2.12秒、履歴6000束差分、2428束比較などはClaude実測として区別する。
+
+Codexサブエージェントの別実測：AttributeErrorを結合の9参照へ個別注入し9/9伝播、通常JSON型の単独変異1080ケースで外部例外0。通常入力から到達不能の証明ではない。標準入力スクリプトの実験でありpytest件数には含めない。次版で境界を見直す際は4モジュールの契約を個別に確認する。
+
+次工程へ着手しPERIOD_EVIDENCE_TIMING_PLAN.mdに期間証拠自身の観測・記録・訂正履歴の設計案と反証表を作成、進捗表と保存案へリンクした。次は期間系列キー、複数区間と訂正の区別、原本文書参照、出力/理由/版境界の確定。現段階は設計のみで新mode採用・新API実装・period_evidence_timed=true・DB保存・日次接続は未実施。既存結合v1は実装済みのまま。第8回依頼はキャッチボールへ保存済み、実送信なし。
+
+このチャットでの受領3/20（第5〜7回、同一レビュー重複加算なし）。主担当＋サブエージェント3体＝利用可能最大4枠で実施。ユーザー最新指示「サブエージェントは最大起動」を継続し、独立した有用な作業へ最大3体を使う。実API・売買審査・LINE・証券接続・発注・見張り再開・Claude自動公開・リセットは実施なし。公式アカウント共通使用6%・残94%、上限40%。終了時刻: 2026-09-13 08:18 JST。
+
+
+## 2026-09-13 08:37 JST 第8回対応・期間履歴最小契約の設計採用
+
+R8-01〜05対応完了。期間series_idを投入側宣言・subject固定、revision/receipt IDを期間束全体一意とし、各系列の過去選択後にsubjectごと有効候補1件だけを写す。0件は省略、2件以上は同hashでも拒否。validity_documents.id=revision_idを無変換で採用。余分な有効subjectや行hash不一致候補を隠さない。period_evidence_timed昇格は結合v2のみ、JSON由来の素の値という例外境界前提を明記。
+
+最小案は補足付きで設計採用した。PERIOD_EVIDENCE_TIMING_PLAN.mdへmode/9キーentry/14キー出力/判定順を具体化。理由集合は提案で欠けていたINVALID_HASHを補って期間履歴固有の20種とし、既存結合v1の9理由は維持。selected_series_countは区間外も含む過去選択系列数、digestは有効候補のみ。投入側の写しと公開digestの成功だけでは選択の対応を証明できないためv1はfalse固定。
+
+Codex配下実測：関連22ファイル473 passed /1 skipped、1.71秒。Claude第8回追加10件を含む。skipはWindows実symlink作成権限不足。全体再実行なし、2728 passed /10 skipped /562 warnings /305.83秒は前回全体実測で後続追加を含まない。Claudeの474件/1.97秒、過去の6000束/2428束/4000束はCodex再実測ではない。製品コード・既存試験期待値・専用例・共通仕様・合成データは変更なし。
+
+次は第9回設計レビューで人工入力例/固定出力とCLI契約を確認し、期間履歴の独立API実装へ進める。期間履歴本体・結合v2・時刻正規化・DB保存・日次接続は未実装。実API/売買審査/LINE/証券接続/発注/見張り/Claude自動公開/リセットは未実施。第9回依頼はキャッチボールへ保存済みで実送信なし。
+
+サブエージェント3体（主担当を含む最大4枠）で契約・橋渡し・検証を分担、最終独立文書確認で必須修正なし。このチャットでの受領4/20（第5〜8回、再掲の重複加算なし）。公式使用8%・残92%、上限40%。終了時刻: 2026-09-13 08:37 JST。
+
+
+## 2026-09-14 05:22 JST 第9回依頼の先行確認・原文待ち
+
+ユーザーからR9-01〜05対応と期間履歴API実装着手の依頼を受けたが、指定のClaude_Opusレビュー_証拠履歴_第9回.mdは未保存。999_投資関係配下のファイル名検索でも別保存の第9回原文・提示人工例・固定出力・CLI案を発見できなかった。Codex引き渡しプロンプト.mdのBは旧第18回のままなので今回の依頼を優先し、旧W01/W02対応は繰り返していない。
+
+今回の明示項目から確定できるR9-01の結合ID書式前提、R9-04の期間payload自己hash、R9-05の結合v1が写し出所を検証しない旨をPERIOD_EVIDENCE_TIMING_PLAN.md本文へ先行反映した。R9-02/03の詳細・提示例/固定出力/CLI規約は原文確認待ち。独自の例や期待値を代用せず、期間履歴API/CLIの製品実装はまだ開始していない。今回の試験再実行なし。前回473 passed /1 skipped /1.71秒は過去実測。
+
+次は第9回原文の保存場所を確認し、読み込んで残りの契約修正・独立API実装・製品試験へ進める。第9回依頼を受けた事実とレビュー原文の受領を区別し、このチャットの原文受領カウンターは4/20（第5〜8回）のまま。第10回依頼は未作成。既存第9回依頼は保存済み・未送信のまま。
+
+サブエージェント最大3体で別保存検索・確定可能文面・実装前提を確認。公式アカウント共通使用10%・残90%、上限40%。リセット/実接続/発注/見張り/Claude公開は未実施。終了時刻: 2026-09-14 05:22 JST。
+
+
+## 2026-09-14 05:37 JST 第9回対応・期間履歴API/CLI実装
+
+第9回原文を受領しR9-01〜05を対応。ASCII書式は結合へ写すIDだけの前提、payload形/code/選択hash失敗の理由対応、期間payload自己hashのdigest、結合v1が写しの出所を検証しない限界を明記。R9-03は補足付き採用。同subjectの再初版はINVALID_SUPERSEDES、subject変更との複合不正は既定先行順のSERIES_REFERENCE_INVALID、revision再利用内容差はREVISION_CONFLICTを維持する。「subjectが同じでも別でも」という箇所は順序と矛盾するため採用しない理由を記録した。
+
+新規aitrader/period_evidence_history_fixture.pyとperiod_evidence_history_fixture_cli.pyを実装。検証と内部evaluate(at)を分離し、20理由・14キー・全未来entry検証・再取得・NO_OP・系列参照・半開期間・候補重複拒否・digestを実装。提示入力をexamples/period_evidence_history_valid.jsonへ保存し、固定出力とdigest ba6486dd33d76cf9594f6e43795f45c70349bee87e40fa6f13e0abcb01d186caを検証。CLIは既存安全読取を流用、1MiB超過はAPI非呼出。既存4API・既存試験期待値・共通仕様・合成データ・既存例は変更なし。
+
+Codex配下実測：新規API55 passed /0.12秒、CLI17 passed /1 skipped /1.37秒。CLI skipはWindows実symlink権限不足。全体common/tests・build-codex/tests・ops/testsは2945 passed /11 skipped /562 warnings、481.24秒、失敗0件。第9回Claude追加14件と今回新規試験を含む。全体11skipすべてをsymlink理由とは扱わない。DB/home/basetempはDropbox外、bytecode/cache無効。全体試験は完了し実行中プロセスなし。Claude報告の488 passed /1.35秒とは別のCodex実測である。
+
+次は保存した第10回依頼に従う新実装の独立レビューと、結合v2の段・理由・両モデル同一時点評価/UTC正規化の最小契約検討。期間履歴の独立API/CLIは実装済みだが結合v2・DB保存・日次実接続は未実装。実原本の真正性や実入手事実を証明せず、ready_for_live/current_signal=false、結合v1のperiod_evidence_timed=falseを維持。第10回依頼はClaude_Opusキャッチボール.mdへ保存済み・未送信。新実装をClaude独立レビュー済みとは表記しない。
+
+このチャットの原文受領カウンター5/20（第5〜9回、同一原文の再掲は加算しない）。20件目の対応・再検証・次回依頼保存後に引き継ぎ要約を作りNew Chatへ移行し、新チャットは0/20。サブエージェント3体（親を含む最大4枠）でAPI・CLI・独立試験を分担した。公式アカウント共通使用14%・残86%、上限40%。リセット/実API/実AI/LINE/証券接続/発注/見張り/Claude自動公開は未実施。
+
+終了時刻: 2026-09-14 05:37 JST。以下の旧原文待ち・未実装・旧実測は履歴であり、本記録を優先する。
+
+
+## 2026-09-14 06:05 JST 第10回対応・結合v2採否判断
+
+R10-01〜03対応完了。期間履歴のsha256をsupplied_hashへ一度だけ取得し書式検査と比較で共用。fullmatchのため正規表現アンカーは変更不要、JSON由来の素の型という例外境界も維持。期間選択digestと結合v1の行選択digestを相互代用不可と明記し、結合v1一次仕様へ第9回の写し出所未検証・ASCII境界節を追加した。
+
+HISTORY_VALIDITY_BINDING_V2_DECISIONS.mdへ採否判断を保存。入力5キー・5段・10理由・同一as_ofで各モデル1回・行履歴v2のUTC比較・15キー・timed成功条件の骨格は設計採用。ただし原案全体のschema確定はしない。期間重複を段3へ畳むと段5初評価と衝突するため、構造18理由と評価2理由の区別、余分subjectの和集合拒否、時点不一致/重複の件数、正規化の対象/失敗順、同時mode差をD10-01〜05の修正候補として整理。提示12反証は各採否を記載した設計期待で、製品試験ではない。履歴v2・結合v2の実装は未着手。
+
+Codex実測は関連9ファイル207 passed /2 skipped /1.98秒、失敗0。期間API/CLI、第10回Claude追加30件、第9回コピー境界、兄弟履歴/共用モデル/結合API・CLIを含む。2skipはWindows実symlink権限不足。外部basetemp、bytecode/cache無効。今回の小変更は関連範囲で検証し全体再実行なし。2945 passed /11 skipped /562 warnings /481.24秒は前回全体の実測で、今回の変更・Claude新規30件を含む最新全体とは表記しない。Claudeの3万束実験などはCodex再実測ではない。
+
+第11回レビュー依頼をClaude_Opusキャッチボール.mdへ保存済み・未送信。次は採否判断の整合性と、保留条件を反映した段表・件数表・履歴v2契約・人工入力/固定出力の具体化。結合v1、既存試験期待値、共通仕様、合成データ、既存例は変更なし。実API/AI/LINE/証券/発注/見張り/Claude公開/リセットは未実施。
+
+このチャットの原文受領6/20（第5〜10回、同一レビューの重複加算なし）。20件目の対応・検証・次回依頼保存後に引き継ぎ要約を作りNew Chatへ移行、新チャット0/20。主担当とSol3体で修正・文書・独立設計点検を分担。アカウント共通使用15%・残85%、上限40%。試験は終了済み。終了時刻: 2026-09-14 06:05 JST。
+
+
+## 2026-09-16 23:23 JST 担当分離と省トークン運用
+
+TEAM_WORKFLOW.mdへCodex=実装/統合、Claude=契約/独立境界試験の単独所有を保存。通常モデル中心、必要時のみ上位・サブエージェント、試験結果共有、差分レビューに変更。AGENTS/CLAUDE/両引継ぎ入口へ最新方針を追記。製品コード変更・試験再実行・Claude起動/送信・モデル設定の自動変更なし。アカウント共通使用31%・残69%、上限40%。レビュー受領数6/20は据置。終了時刻: 2026-09-16 23:23 JST。
+
+
+## v2 API実装・統合確認（2026-09-17 06:02:46 JST）
+
+ユーザー「次」を採用契約に基づく実装続行指示として、行履歴v2と結合v2の2 APIを新規実装。行履歴はreceipt比較用のobserved_at/recorded_atだけUTC正規化し、2 pathの厳密書式と失敗順を採用。結合は同一as_ofで両内部モデルを各1回評価、期間重複・extra和集合・件数・10理由/15キーを実装。選択を外側で再実装せず、v1評価モデルと期間v1モデルを共用する。既存v1製品コード・既存試験期待値・既存例・共通仕様・合成データは変更なし。
+
+新規：aitrader/evidence_history_fixture_v2.py、aitrader/history_validity_binding_v2.py、各専用試験、examples/history_validity_binding_v2_valid.json、tests/binding_v2_expected.json。採用契約のE1〜E9固定15キー出力は製品試験で全一致。例から出力を作り期待値へ上書きする方式ではない。
+
+Codex実測：行履歴v2新規20件＋v1関連35件=55 passed /0.12秒（Sol配下）、結合v2新規29 passed /0.08秒。全体はcommon/tests・build-codex/tests・ops/testsで3024 passed /11 skipped /562 warnings、307.64秒、失敗0。既存第10回Claude追加30件と今回新規49件を含む。Windows同梱Python、PYTHONDONTWRITEBYTECODE=1、pytest cache無効、AI_TRADER_HOME/basetempはDropbox外。全体11skipの個別理由は今回の-q出力に未収録。従来の実symlink権限不足を含むが11件すべて同理由とは断定しない。既存skip条件は変更なし。全体試験は終了済みで実行中プロセスなし。
+
+入口は各v2モジュールのinspect_evidence_history / inspect_history_validity_binding。v2専用CLIは未実装。DB保存・実取込・日次接続も残工程。API成功もready_for_live/current_signal=false、timedは人工履歴検査のみ。実API/審査AI/LINE/証券/発注/見張り/Claude起動送信公開/リセットは未実施。
+
+第12回Claude回答は未受領。既存の契約確認依頼を今回の実装の重要差分3点へ統合して保存済み・未送信。軽微な確認だけの往復を増やさない。技術レビュー原文受領7/20のまま。Sol1体のみ委譲し、親は結合実装と統合。公式アカウント共通使用37%・残63%、上限40%。次は重要差分の独立確認と、v2 CLIの範囲・読取規約の具体化。契約文書だけで未実装という古い記録に戻らない。
+
+
+## 2026-09-17 14:24 JST 使用上限による停止
+
+ユーザーの続行指示で開始確認したところ公式アカウント共通使用41%・残59%、設定上限40%を超過していたため新規工程を開始せず停止。第12回Claude回答は未保存。既存の行履歴v2・結合v2 API実装と全体3024 passed /11 skipped /562 warnings /307.64秒は前回完了結果のまま。次は重要差分の独立確認とv2専用CLIの具体化。今回の製品変更・試験・配下起動・リセット・公開送信なし。原文受領7/20を維持。上限変更の明示または利用枠回復後の続行指示で再開する。
+
+
+## 第12回独立レビュー受領・Windows実測（2026-09-17 14:31:50 JST）
+
+依頼hash: 2f6596365155a6633400d49ccd766d6b2be4757fcee1a8d9454cb20c92d584e8。Claude報告を受領：実装バグ0・契約違反0、重要差分3点は契約と一致。新規反証 tests/test_history_validity_binding_v2_claude_contract.py は30件。独立レビューはClaude、今回の関連Windows実測はCodex。原文受領8/20（前回7/20から1件加算）。
+
+指定3ファイルをbuild-codexで1回実行：**79 passed / 0 skipped / 0 failed、0.27秒**（既存49＋新規30、skip理由なし）。全体3024件は再実行なし。
+
+```text
+python -m pytest tests/test_evidence_history_fixture_v2.py tests/test_history_validity_binding_v2.py tests/test_history_validity_binding_v2_claude_contract.py -q -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-r12-codex-20260917-1430
+```
+
+環境：Windows 11（10.0.26200）、CPython 3.12.14 AMD64、pytest 9.1.1。python=C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。PYTHONDONTWRITEBYTECODE=1、cache無効、basetempはDropbox外。製品2ファイル・指定試験3ファイルのSHA256は第12回報告と一致。新規試験SHA256: eaea04af2ff5f49f9d2182da7ff456993f3e28feb1683e623b953fdba9e57b32。
+
+R12-01は記録のみ：UTC変換で年範囲を溢れ得る方向は年1では正のオフセット、年9999では負のオフセット。既存§3-3の例は正しく、任意追記は見送り、契約・実装とも無変更。製品・試験・合成データ・examples・自分宛て引渡しMD・QUESTIONS.mdは変更なし。実API・実審査・LINE・証券接続・発注なし。
+
+今回の明示依頼の範囲で終了し追加工程なし。公式アカウント共通使用率・残量は取得ツールがなく不明（14:24の41%・残59%は過去値）。[Claude向けB](Claude引き渡しプロンプト.md)を最後に「引き渡し不要」として更新・dev公開する。公開成否はコマンド結果で報告する。
+
+
+## 2026-09-17 14:33:19 JST 第12回受領・関連試験完了
+
+Claude独立レビューは実装バグ0・契約違反0。追加tests/test_history_validity_binding_v2_claude_contract.pyの30件を受領。CodexはTerra子1体へ関連3ファイルの試験を委譲し、Windows/Python3.12.14で79 passed /0 skipped /0 failed、0.29秒。Claude報告の30 passed/0.18秒とは別実測。全体再実行なし、3024 passed/11 skippedは前回全体結果で今回追加30件を含まない。R12-01は記録のみで製品修正不要、契約§3-3へ溢れ方向の短い補足だけ追加。既存コード/試験/例は未変更。
+
+第12回受領で技術レビュー8/20（第5〜12回）。ユーザー指示で上限50%へ更新、アカウント共通使用41%・残59%で再開。親は方針と記録、Terraは実測を担当。次はv2専用CLIの仕様・実装。今回の第12回対応への追加確認は不要、Claude Bは「引き渡し不要」として保存。旧Bの「公開」は継続中の自動公開停止に従い実施せず、送信・起動・見張り再開なし。終了：2026-09-17 14:33:19 JST。
+
+
+## 2026-09-17 14:41:36 JST v2専用CLI完了
+
+Sol/medium子1体へ実装・局所試験を委譲し、親は契約・重要差分確認・記録を担当。新規aitrader/evidence_history_fixture_v2_cli.py、aitrader/history_validity_binding_v2_cli.py、tests/test_history_v2_clis.pyを追加。既存_mapping/_Parser共用、--input必須、13/15キーJSON、成功0/不成功2、読取例外は固定stderr/空stdout、1MiBちょうど許容・超過API非呼出。製品API/既存試験/既存例は変更なし。
+
+Windows/Python3.12.14、bytecode/cache無効、basetempはDropbox外。新規18 passed/0 skipped/0 failed/3.14秒、関連9ファイル171 passed/1 skipped/0 failed/0.97秒、2実行合計189 passed/1 skipped/4.11秒。skipは既存結合v1 CLIの実symlink作成権限制約。第12回Claude追加30件も関連群に含む。全体再実行なし、3024 passed/11 skippedはAPI段階の過去全体結果。親による同じ試験の再実行なし。
+
+操作（build-codexで）：python -m aitrader.history_validity_binding_v2_cli --input examples/history_validity_binding_v2_valid.json。行履歴だけはpython -m aitrader.evidence_history_fixture_v2_cli --input <Dropbox外のhistory部分JSON>。既存v1例を書換えない。
+
+次工程は保存・取込へ進む前の未決契約整理であり、DB実装/実接続を今回許可・実行した意味ではない。APIは第12回Claude独立確認済み、今回CLIはCodex実装・検証で独立確認未実施。既存読取共用の小変更なので単独の再レビュー往復は作らず、次の機能境界確認へまとめる。技術レビュー受領8/20を維持。使用42%・残58%、上限50%。リセット・公開送信・見張り再開なし。
+
+
+## 2026-09-17 20:13:34 JST 保存・取込前の契約整理
+
+Sol/medium子1体が現行実装と保存案の差分を読み、親が3判断へ統合。STRICT_EVIDENCE_STORAGE_PLAN.md先頭に最新状況とD13-01〜03を追記。最小候補は完全な人工結合v2束の保存/再読。保存単位/ID名前空間、原子的確定/障害、hash/版/再読出力の扱いをClaudeへ限定して判断依頼する。保存方式・API・理由表は未採用、製品実装なし。既存行/期間のID名前空間、異なるreceipt比較、行だけを表す結合digestを維持。
+
+文書のみの変更のためpytest/fuzzは未実施（件数・秒・skip理由は該当なし）。前回CLIの新規18成功と関連171成功/1skipは過去実測で再実行していない。技術レビュー受領8/20を維持。アカウント共通使用42%・残58%、上限50%。保存のみ、公開/送信なし。
+
+次はClaude_Opusキャッチボール.mdのBにあるD13-01〜03の契約判断。Codexは回答を受け採否・実装を担当。実原本の根拠不足はREAL_DATA_EVIDENCE.mdを参照。今回の作業開始時刻は未取得、終了は本節見出し。
+
+
+## 2026-09-17 21:50:01 JST 最新CLI契約案の突合完了
+
+最新BのV2_CLI_CONTRACT_PROPOSAL.mdを既存実装とSol/mediumで照合。製品CLI/API・既存試験・例は変更不要。1MiB据置を採用し、固定stderrは実装済みのv1同文を維持（提案のv2専用文言は不採用）。不足分はtests/test_history_v2_cli_contract_additions.pyへ7ケース追加。UTC表記のstdout/digest一致、v1束拒否、非dictとsymlinkの読取拒否を確認する。
+
+Windows NT10.0.26200.0 / Python3.12.14 / PowerShell7.6.5。Solが関連5ファイルを1回実測：102 passed /2 skipped /0 failed /5.52秒。2skipは新規symlink試験で作成権限なし。bytecode/cache無効、basetempはDropbox外。親の再試験・全体再試験なし。技術レビュー受領8/20維持、公式アカウント共通使用43%・残57%、上限50%。
+
+次はClaude引き渡しプロンプト.mdのCLI重要境界1点の独立確認。最新Bの公開指示に従いdev宛て完成通知を行う（起動・受領の確認とは別）。保存契約D13-01〜03はClaude_Opusキャッチボール.mdに未送信案として保持し、今回は混ぜない。開始の最初の時計確認21:47:38 JST、終了は本節見出し。
+
+## 2026-09-17 21:51 JST v2 CLI再公開依頼・本セッション完了
+
+依頼hash: b2a500f8f656d4d1410f11d08d40870c7b8911577861559390c894c3954e1b21。開始21:47 JST。既存v2 CLI 2本は採用済み契約に適合し、製品変更不要。新規tests/test_evidence_history_fixture_v2_cli.py（5件）とtests/test_history_validity_binding_v2_cli.py（4件）をSol/mediumが追加。1MiB据置を採用、提案の新stderrは既存固定文言と既存試験を維持するため不採用。採否詳細はV2_CLI_CONTRACT_PROPOSAL.md。本セッションの例追加なし（tmp入力を使用）。
+
+Windowsで指定5ファイル＋既存test_history_v2_clis.pyをまとめて1回実測：**104 passed / 2 skipped / 0 failed、1.80秒**（ツールwall 2.1367494秒、exit 0）。指定5ファイルは86 passed/2 skipped、既存CLIは18 passed。新規2ファイルは7 passed/2 skipped、API3ファイルは79 passed。skipは新規の実symlink作成2件がWindows権限不足で未実施のため。既存試験のskip追加・期待値変更なし。
+
+```powershell
+$env:PYTHONDONTWRITEBYTECODE='1'
+python -m pytest tests/test_evidence_history_fixture_v2_cli.py tests/test_history_validity_binding_v2_cli.py tests/test_evidence_history_fixture_v2.py tests/test_history_validity_binding_v2.py tests/test_history_validity_binding_v2_claude_contract.py tests/test_history_v2_clis.py -q
+```
+
+cwd=build-codex。Microsoft Windows NT 10.0.26200.0 / CPython3.12.14 / pytest9.1.1。python=C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。TEMP/TMP=C:/Users/s/AppData/Local/Temp、basetemp明示なし、標準cacheprovider使用（build-codex/.pytest_cache）。ログファイル保存なし、測定値はツール出力から転記。全体試験は製品無変更のため省略。親による再実行なし。
+
+新規試験SHA256（上記順）：4a246ce1fb0a1a342571a3a6003896e40d57616d729376e7b19fa2d63f2f96d7 / 31e1a7b9854745649fce53bc95da218d4ac74eddc677e08461a92919e24c2559。
+両v2 CLI、両v1 CLI、packet_cli、strict_input_cli、既存test_history_v2_clis.py、Claude v2試験、自分宛て引渡しMD、QUESTIONS.mdは本セッション内hash照合で無変更。
+
+同時に別セッションの追加試験test_history_v2_cli_contract_additions.pyと21:50:01の記録・公開を検出したため保持した。その102 passed/2 skipped/5.52秒は本セッション測定ではなく、件数を合算しない。本セッションはユーザー指定の使用率確認なしで実行し、現在使用率・残量は未取得。実通信・見張り操作なし。次は[Claude向けB](Claude引き渡しプロンプト.md)の読取境界・固定stderr・終了コードの独立確認1点。全成果保存後にBを更新してdev公開し、成否はコマンド結果で報告する。
+## 第13回 CLI独立確認の受領（2026-09-17）
+
+依頼hash: `6e622f4917a97ed9870cbf9936427cc376ce28aad419bcba8ca57ec8f34e4175`。Claude報告のバグ0・反証30件全通過を受領。R13-01は(b)を採用し、`-h/--help` のstdout usage・stderr空・終了0を利用案内の例外として契約に明記した。v1との共通動作を維持するため製品変更なし。採否詳細はHISTORY_VALIDITY_BINDING_V2_CONTRACT.md末尾。一次資料記載の製品2本・試験5本のSHA256は全件一致。
+
+Codex実測（Sol/medium配下、親の重複実行なし）：指定5ファイルをWindowsで1回、**60 passed / 4 skipped / 0 failed、6.90秒**。Windows 11 10.0.26200、CPython 3.12.14 64-bit、pytest 9.1.1。4 skipは既存のsymlink作成不可分岐（CLI別各1件＋追加契約の両CLI2件）。試験の変更・skip追加はしていない。
+
+```powershell
+python -m pytest tests/test_history_v2_clis.py tests/test_evidence_history_fixture_v2_cli.py tests/test_history_validity_binding_v2_cli.py tests/test_history_v2_cli_contract_additions.py tests/test_history_v2_cli_claude_contract.py -q -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-r13-tests-20260917-001
+```
+
+実行場所build-codex、Python実体C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。全体3024件は再実行しない。Claude初回30 passed/1.04秒と今回の測定は区別する。
+
+README・契約2文書・キャッチボール履歴とClaude宛てBだけを更新。自分宛てMD・QUESTIONS・製品・試験・共通仕様・examplesは変更なし。使用率確認はユーザー指定により省略し、使用率・残量は未取得。v2 CLI工程は完了、D13-01〜03は別依頼。全成果保存後、Claude宛てBを「引き渡し不要」で更新しdev公開する。公開成否は実行結果で報告する。
+
+
+## 2026-09-17 22:25:13 JST 第13回完了確認・保存契約へ移行
+
+Terra/mediumが別セッションの成果を読取確認。第13回R13-01(b)採用、指定5試験60 passed/4 skipped/0 failed/6.90秒は既存実測であり今回再実行していない。製品・試験の変更なし。技術レビュー受領9/20（第5〜13回）。今回使用率は確認せず最新ユーザー指示を維持。
+
+次の独立工程は人工結合v2束の保存・再読契約D13-01〜03。保存済み案をClaude向けBへ移し、CLI追加レビューとは分離する。Claudeが契約表・固定例、Codexが採否後の実装を担当。保存API/DB/実取込の採用はまだない。今回は依頼準備まで、公開・送信はしない。開始22:24:02 JST、終了は見出し。既存未送信案の全件再検討は行っていない。
+
+
+## 2026-09-17 22:40:24 JST 人工結合束の保存・再読API/CLI完了
+
+D13-01〜03を補足付きで採用し、Sol/highに新規API/CLI/試験を委譲。evidence_bundle_store.pyのput(input_path, home=None)とverify(bundle_sha256, home=None)、専用CLIを追加。既存v1/v2・_mapping・_Parser・db.py・既存試験・examplesは変更なし。採否はEVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md末尾を優先。
+
+生バイトSHA256をIDとする単一JSON記録。Dropbox外の専用先、1MiB入力/2MiB記録、同一バイトNO_OP、既存破損非上書き、一時書込/fsync/replace、API最大1回、型付き出力照合。不成功束も保存し、保存statusと内側の判定を区別する。verifyは書込みなし。電源断耐久・提供元真正性・実装版バイナリの保存は保証しない。rawの排他snapshotに同一オブジェクトの_mappingを適用し、解析値との一致を確認する。
+
+最終新規試験47 passed/1 skipped/0 failed/1.59秒。最終関連10ファイル186 passed/5 skipped/0 failed/7.98秒（新規を含むため合算しない）。Windows/CPython3.12.14、PYTHONDONTWRITEBYTECODE=1、cache無効、実行先build-codex、Python実体C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。5skipはsymlink作成権限不足（新規1・既存CLI4）。新規32関数をパラメータ化して48ケース：30目安超過は不正入力・ID・record型・output型とAPI回数の境界固定による。fuzz/全体試験/親の再実行なし。
+
+```text
+python -m pytest -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-ebs-final-related-8c9e07c41e9944bca0cc17cff3bf2007 tests/test_evidence_bundle_store.py tests/test_evidence_bundle_store_cli.py tests/test_evidence_history_fixture_v2.py tests/test_history_validity_binding_v2.py tests/test_history_validity_binding_v2_claude_contract.py tests/test_history_v2_clis.py tests/test_evidence_history_fixture_v2_cli.py tests/test_history_validity_binding_v2_cli.py tests/test_history_v2_cli_contract_additions.py tests/test_history_v2_cli_claude_contract.py -q
+```
+
+操作（build-codexで、保存先はDropbox外）：
+```text
+python -m aitrader.evidence_bundle_store_cli put --input examples/history_validity_binding_v2_valid.json --home C:/Users/s/AppData/Local/ai-trader-evidence
+python -m aitrader.evidence_bundle_store_cli verify --id 381454c638620b9f9eb66550a4e667b5bb4b4ad02399ad12b220e9e67353f7cf --home C:/Users/s/AppData/Local/ai-trader-evidence
+```
+
+例ファイル生バイトhashは実ファイルと一致。上記操作例は案内でありユーザー用保存先へ実投入していない。次はClaudeが原子性境界・hash照合・API呼出回数の重要差分を独立確認。今回実装はCodex検証であり独立確認前。技術レビュー受領9/20、今回使用率確認なし。開始22:29:20 JST、終了は見出し。最新Bに従い成果保存後dev完成通知を公開する。実API/LINE/発注/見張り操作なし。

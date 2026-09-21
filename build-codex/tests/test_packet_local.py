@@ -100,7 +100,7 @@ def test_packets_cli(tmp_path,monkeypatch,capsys):
         con.execute("INSERT INTO calendar VALUES ('2026-09-08',true)")
         con.execute("INSERT INTO provenance VALUES ('data_mode','synthetic')")
     monkeypatch.setenv('AI_TRADER_HOME',str(tmp_path))
-    monkeypatch.setattr('aitrader.packet_cli.run_signals',lambda *a:args()['candidates'])
+    monkeypatch.setattr('aitrader.packet_cli._run_signals_in_connection',lambda *a:args()['candidates'])
     monkeypatch.setattr(sys,'argv',['aitrader','packets','--strategy','margin_bucket_long','--as-of','2026-09-04'])
     main(); output=capsys.readouterr(); rows=json.loads(output.out)
     assert len(rows)==1 and rows[0]['expires_at']=='2026-09-08T08:59:00+09:00'

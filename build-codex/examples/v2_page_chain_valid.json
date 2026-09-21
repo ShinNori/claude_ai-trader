@@ -1,0 +1,37 @@
+{
+  "mode": "v2_page_chain_fixture_v1",
+  "dataset": "calendar",
+  "pages": [
+    {
+      "query": {
+        "from": "2026-09-10",
+        "to": "2026-09-11"
+      },
+      "request_token": null,
+      "response": {
+        "data": [
+          {
+            "Date": "2026-09-10",
+            "HolDiv": "1"
+          }
+        ],
+        "pagination_key": "artificial-next"
+      }
+    },
+    {
+      "query": {
+        "from": "2026-09-10",
+        "to": "2026-09-11"
+      },
+      "request_token": "artificial-next",
+      "response": {
+        "data": [
+          {
+            "Date": "2026-09-11",
+            "HolDiv": "1"
+          }
+        ]
+      }
+    }
+  ]
+}

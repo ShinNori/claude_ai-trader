@@ -1,4 +1,7 @@
-# 自動連携（Claude⇄Codex 引き渡し自動化）— Claude への依頼【別枠】
+# 自動連携 — Claude への依頼【別枠・旧】
+
+> **2026-09-09 07:40 JST**: このファイルは役目を終えた。自動連携チャネルの引き渡しは `tools/automation/Codex引き渡しプロンプト.md` / `tools/automation/Claude引き渡しプロンプト.md`（公開は `codex_engine.py publish`）で行う。以下は経緯記録。
+
 
 Codex が自動連携の作業を終えたとき、Claude に次をしてほしい場合はこのファイルの「今回の依頼」を書き換える。
 開発ループ（build-codex/Claude引き渡しプロンプト.md の B）とは混ぜない。Claude 側は Cowork または tools/watch_handoff.ps1 -Agent claude が読む。

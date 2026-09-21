@@ -1,24 +1,37 @@
 import json
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 import numpy as np
 import pandas as pd
-from .db import connect
+from .db import connect, require_known_data_mode
 from .strategies import get_strategy
-from .report import render
+from .backtest_artifacts import publish_backtest_artifacts
 
 TRADE_COLS = ['code','entry_date','entry_price','exit_date','exit_price','qty_yen','pnl_yen','pnl_pct','holding_days','strategy','reason']
+
+
+@contextmanager
+def _read_transaction(connection):
+    connection.execute('BEGIN')
+    try:
+        yield connection
+        connection.execute('COMMIT')
+    except BaseException:
+        try:
+            connection.execute('ROLLBACK')
+        except BaseException:
+            pass
+        raise
 
 def run(home, strategy, start, end, out_dir):
     if start > end:
         raise ValueError('start must not exceed end')
     st = get_strategy(strategy)
-    with connect(home) as con:
+    with connect(home) as con, _read_transaction(con):
+        mode = require_known_data_mode(con)
         px = con.execute('SELECT code,date,open,close FROM prices_daily WHERE date<=? ORDER BY date,code',[end]).df()
         ix = con.execute("SELECT date,close FROM index_daily WHERE name='TOPIX' AND date<=? ORDER BY date",[end]).df()
-        mode_row = con.execute("SELECT value FROM provenance WHERE key='data_mode'").fetchone()
-        if mode_row is None:
-            raise ValueError('Data provenance missing; load verified data first')
         days = sorted(px.date.unique())
         days = [pd.Timestamp(d) for d in days]
         active = [i for i,d in enumerate(days) if start<=d.date()<=end]
@@ -26,7 +39,7 @@ def run(home, strategy, start, end, out_dir):
             raise ValueError('No prices in requested period')
         daily = {pd.Timestamp(d): f.set_index('code') for d,f in px.groupby('date')}
         benchmark = ix.set_index('date')['close'].reindex(pd.DatetimeIndex([days[i] for i in active]))
-        if benchmark.isna().any() or (benchmark<=0).any():
+        if not np.isfinite(benchmark.to_numpy(dtype=float)).all() or (benchmark<=0).any():
             raise ValueError('Benchmark coverage incomplete')
         initial = 10_000_000.0
         cash = initial
@@ -112,12 +125,8 @@ def run(home, strategy, start, end, out_dir):
                    avg_holding_days=float(tr.holding_days.mean()) if len(tr) else 0.0,
                    benchmark_cagr=float((eq.benchmark.iloc[-1]/initial)**(252/len(eq))-1),
                    benchmark_max_drawdown=float((eq.benchmark/eq.benchmark.cummax()-1).min()),
-                   corr_to_benchmark=correlation,yearly=yearly,data_mode=mode_row[0],
+                   corr_to_benchmark=correlation,yearly=yearly,data_mode=mode,
                    generated_at=datetime.now(timezone.utc).isoformat())
     folder = Path(out_dir)/f'{strategy}_{st.version}'
-    folder.mkdir(parents=True,exist_ok=True)
-    tr.to_csv(folder/'trades.csv',index=False)
-    eq.to_csv(folder/'equity.csv',index=False)
-    (folder/'summary.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
-    render(folder)
+    publish_backtest_artifacts(folder, tr, eq, summary)
     return summary

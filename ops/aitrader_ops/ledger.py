@@ -372,7 +372,10 @@ class _State:
 
     def _on_expire(self, pl: dict):
         for pid in pl["proposal_ids"]:
-            n = self.notices[pid]
+            n = self.notices.get(pid)
+            if n is None:
+                # 不明参照は黙って無視せず契約どおりのエラーにする（再起動時は MigrationError(seq, EXPIRE) に包まれる。v0.3.9 / T06）
+                raise LedgerError(f"通知 {pid} がありません")
             if n["notice_state"] == "SENT":
                 n["notice_state"] = "EXPIRED"
                 n["history"].append(("EXPIRED", pl["at"]))
@@ -404,7 +407,7 @@ class _State:
 
     def _apply_fill(self, n: dict, *, event_id: str, qty: int, price: Decimal, fee: Decimal,
                     at: Any, broker: str | None, source: str, kind: str,
-                    original_sell_cost: Decimal | None = None) -> list[str]:
+                    original_sell_cost: Decimal | None = None, effective_at: Any = None) -> list[str]:
         warnings: list[str] = []
         p = n["proposal"]
         if n["closed"] and n["closed_state"] in ("CANCELLED", "SKIPPED"):
@@ -443,6 +446,8 @@ class _State:
             "event_id": event_id, "qty": qty, "price": str(price), "fee": str(fee), "at": at,
             "broker_order_id": broker, "source": source, "kind": kind, "reversed": False,
             "cash_delta": cash_delta, "cost_delta": str(cost_delta),
+            # 残高に反映された業務時刻。通常の約定は at と同じ、保留 APPLY は解決時刻（v0.3.8 / Q09）
+            "effective_at": effective_at if effective_at is not None else at,
         })
         was_closed = n["closed"]
         self._recalc(n)
@@ -568,6 +573,11 @@ class _State:
                 if not live:
                     raise LedgerError("訂正対象となる約定報告がありません")
                 target = live[-1]
+            if self.rule_version >= 3 and at is not None and target.get('effective_at') is not None \
+                    and _dt(at) < _dt(target['effective_at']):
+                # 訂正の業務時刻は、訂正対象の約定が残高に反映された業務時刻以後に限る（v0.3.8 / Q09）。
+                # これを許すと時点再生で「対象の約定がない時刻に訂正だけが現れる」履歴になる。時刻なし訂正には制約なし。
+                raise LedgerError('訂正の業務時刻は、訂正対象の約定が残高に反映された時刻より前にはできません')
             # Price/fee-only SELL corrections retain the original acquisition cost.
             original_sell_cost = None
             if self.rule_version >= 3 and n['proposal']['side'] == 'SELL':
@@ -575,9 +585,12 @@ class _State:
                     raise LedgerError('SELL数量の訂正は後続取引の再計算契約が必要です')
                 original_sell_cost = Decimal(target['cost_delta'])
             self._reverse_fill(n, target)
+            # 時刻なし訂正は訂正対象の有効時刻を継承する（v0.3.9 / T07）。対象より前の時点には現れず、以後の訂正の基準にもなる。
+            effective = at if at is not None else target.get('effective_at')
             res.warnings += self._apply_fill(n, event_id=event_id, qty=qty or target["qty"], price=price, fee=fee,
                                              at=at, broker=broker if broker is not None else target["broker_order_id"],
-                                             source=source, kind=target["kind"], original_sell_cost=original_sell_cost)
+                                             source=source, kind=target["kind"], original_sell_cost=original_sell_cost,
+                                             effective_at=effective)
             res.applied = True
         if res.applied:
             self.seen.add(event_id)
@@ -692,7 +705,7 @@ class _State:
             raise LedgerError('既存約定に一致する保留行は追加適用できません。訂正または照合が必要です')
         self._apply_fill(n, event_id=eid, qty=_int_qty(row["qty"], "qty"), price=_money(row["price"], "price"),
                          fee=_money(row.get("fee", 0), "fee"), at=row.get("at"), broker=row.get("broker_order_id"),
-                         source="csv", kind="FILLED")
+                         source="csv", kind="FILLED", effective_at=pl.get("at"))
         del self.pending[eid]
         self.seen.add(eid)
 
@@ -741,6 +754,11 @@ class _State:
 
 
 # ---- 台帳 ---------------------------------------------------------------------
+
+def validate_snapshot_for_replay(payload: dict) -> None:
+    """保存SNAPSHOTを既存再生規則で検証する。DB接続・入力変更はしない。"""
+    _State().apply('SNAPSHOT', copy.deepcopy(payload))
+
 
 class Ledger:
     SCHEMA = """
@@ -837,7 +855,7 @@ class Ledger:
         limit = _dt(at) if at is not None else None
         stored = self._con.execute("SELECT seq, kind, at, payload FROM ledger_events ORDER BY seq").fetchall()
         self._validate_markers([(seq, kind, payload) for seq, kind, _, payload in stored])
-        rows = [(kind, at, payload) for _, kind, at, payload in stored]
+        rows = self._effective_rows([(kind, at, payload) for _, kind, at, payload in stored])
         # 開始残高（SNAPSHOT）の業務時刻より前の時点は、この台帳が存在しない時点。後着した保留行や遅着通知があっても
         # 空の台帳（現金 0・保有/予約なし）を返し、旧台帳の残高を混入させない（契約 (c)、v0.3.6 / L02）。
         snapshot_at = next((_dt(ev_at) for kind, ev_at, _ in rows if kind == 'SNAPSHOT' and ev_at), None)
@@ -845,8 +863,27 @@ class Ledger:
             return self._view_of(state)
         if any(kind == 'POLICY_UPGRADE' for kind, _, _ in rows):
             state.rule_version = 2
-        needed = {(json.loads(payload).get('_applied_proposal_id') if kind == 'CSV_FILL' else json.loads(payload).get('proposal_id')) for kind, ev_at, payload in rows
-                  if kind in ('TRADE', 'CSV_FILL') and (limit is None or not ev_at or _dt(ev_at) <= limit)}
+        # 時点内で「すでに効いている約定」が参照する通知の識別情報。通知そのものが遅着（業務時刻が at より後）でも、
+        # 約定の適用に必要な識別だけを context_only で持ち込む。対象は TRADE / CSV_FILL に加えて、人間が APPLY で確定した
+        # 保留行の解決（PENDING_RESOLVED, action=APPLY）。DISCARD は通知を参照しないので含めない（v0.3.7 / O01）。
+        # 通知の状態変更（NOTICE_STATE）と期限切れ（EXPIRE の proposal_ids）も、時点内にあれば識別だけを補完する。
+        # 状態は LedgerView の公開欄になく金銭効果もないので、予約 0・残高非先取りは保たれる（v0.3.8 / Q10）。
+        needed = set()
+        for kind, ev_at, payload in rows:
+            if kind not in ('TRADE', 'CSV_FILL', 'PENDING_RESOLVED', 'NOTICE_STATE', 'EXPIRE'):
+                continue
+            if limit is not None and ev_at and _dt(ev_at) > limit:
+                continue
+            pl = json.loads(payload)
+            if kind == 'CSV_FILL':
+                pids = [pl.get('_applied_proposal_id')]
+            elif kind == 'PENDING_RESOLVED':
+                pids = [pl.get('proposal_id')] if pl.get('action') == 'APPLY' else []
+            elif kind == 'EXPIRE':
+                pids = list(pl.get('proposal_ids') or [])
+            else:
+                pids = [pl.get('proposal_id')]
+            needed.update(pid for pid in pids if pid)
         for kind, ev_at, payload in rows:
             if kind == 'POLICY_UPGRADE':
                 # Policy is a recorded-order boundary, not a monetary event.
@@ -864,6 +901,33 @@ class Ledger:
                 continue
             state.apply(kind, json.loads(payload))
         return self._view_of(state)
+
+    @staticmethod
+    def _effective_rows(rows):
+        """時点再生の時刻フィルタに使う業務時刻を行ごとに決める。
+        通常は記録された at。時刻なし訂正（TRADE/CORRECTION, at=None, replaces_event_id あり）は訂正対象の有効時刻を継承する
+        （対象が保留 APPLY なら解決時刻、通常約定ならその約定時刻、訂正ならその訂正の有効時刻。v0.3.9 / T07）。
+        対象が不明・時刻なしなら従来どおり None（常に時点内）で、適用時の不明参照エラーはそのまま出る。"""
+        resolved_at = {}
+        for kind, ev_at, payload in rows:
+            if kind == 'PENDING_RESOLVED':
+                pl = json.loads(payload)
+                if pl.get('action') == 'APPLY' and pl.get('source_event_id') is not None:
+                    resolved_at[str(pl['source_event_id'])] = pl.get('at') or ev_at
+        effective = {}
+        out = []
+        for kind, ev_at, payload in rows:
+            filter_at = ev_at
+            if kind in ('TRADE', 'CSV_FILL'):
+                pl = json.loads(payload)
+                eid = str(pl.get('event_id'))
+                if kind == 'TRADE' and pl.get('kind') == 'CORRECTION' and ev_at is None and pl.get('replaces_event_id'):
+                    filter_at = effective.get(str(pl['replaces_event_id']))
+                    effective[eid] = filter_at
+                else:
+                    effective[eid] = resolved_at.get(eid, ev_at)
+            out.append((kind, filter_at, payload))
+        return out
 
     def replay_known(self, seq: int) -> LedgerView:
         """記録順で seq 以下のイベントを再生（「その時点でシステムが知っていた残高」）"""
@@ -932,9 +996,12 @@ class Ledger:
                     code = 'ID_PAYLOAD_CONFLICT'
             self._ingest_audit(kind, audit_plain, outcome, code, detail, seq if persist else None)
             self._con.execute("COMMIT")
-        except Exception:
-            if self._con.in_transaction:
-                self._con.execute("ROLLBACK")
+        except BaseException:
+            try:
+                if self._con.in_transaction:
+                    self._con.execute("ROLLBACK")
+            except BaseException:
+                pass
             raise
         if persist:
             self._state = trial
@@ -1058,6 +1125,11 @@ class Ledger:
     def adjust(self, kind: str, amount: int | None, code: str | None, ratio: float | None, at: datetime, note: str) -> None:
         at = as_aware(at)
         self._commit("ADJUST", {"kind": kind, "amount": amount, "code": code, "ratio": ratio, "at": at, "note": note}, at)
+
+    def proposal(self, proposal_id: str) -> dict:
+        """通知に記録された Proposal（公開フィールドのコピー。v0.4.0、notify の期限再確認用）"""
+        self._sync()
+        return dict(self._state.notices[proposal_id]["proposal"])
 
     def notice(self, proposal_id: str) -> dict:
         self._sync()

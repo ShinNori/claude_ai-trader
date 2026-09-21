@@ -29,6 +29,10 @@ def setup(tmp_path):
         for i in range(-10, 31):
             d = DAY+timedelta(days=i)
             con.execute('INSERT INTO calendar VALUES(?,?)', [d, d.weekday() < 5])
+        # Explicit as-of market observations, independent of proposed limit prices.
+        con.executemany('INSERT INTO prices_daily(code,date,close) VALUES(?,?,?)',
+                        [(code, DAY-timedelta(days=1), 1000.)
+                         for code in ('6857', '7203', '6758')])
     def execute(ps=None, run_id='run1', now=NOW, decisions=None, votes=None, valuation=None):
         ps = ps if ps is not None else [proposal()]
         vs = votes if votes is not None else mock_verdicts(ps, run_id, min(now, NOW), decisions)
@@ -188,5 +192,7 @@ def test_missing_mark_stops(setup):
     home, execute = setup
     l = Ledger(home/'ledger.sqlite'); l.create_notice(proposal('seed'), at=NOW)
     assert l.report(trade('seed')).applied; l.close()
+    with connect(home) as con:
+        con.execute('DELETE FROM prices_daily WHERE code=?', ['6857'])
     with pytest.raises(RunError, match='評価価格'):
         execute()

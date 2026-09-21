@@ -1,0 +1,31 @@
+"""Read a v2 artificial evidence revision history without persistence."""
+from __future__ import annotations
+
+import json
+import sys
+
+from .evidence_history_fixture_v2 import inspect_evidence_history
+from .packet_cli import _mapping
+from .strict_input_cli import _Parser
+
+
+_ERROR = '証拠履歴を検査できません。入力形式と訂正の参照を確認してください。'
+
+
+def main(argv=None):
+    try:
+        parser = _Parser(description='人工証拠の取得・訂正履歴 v2 をメモリ内で検査します。')
+        parser.add_argument('--input', required=True)
+        args = parser.parse_args(argv)
+        result = inspect_evidence_history(_mapping(args.input))
+        rendered = json.dumps(
+            result, ensure_ascii=False, sort_keys=True, allow_nan=False)
+    except Exception:
+        sys.stderr.write(_ERROR + '\n')
+        return 2
+    sys.stdout.write(rendered + '\n')
+    return 0 if result.get('status') == 'VERIFIED_OFFLINE_HISTORY' else 2
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

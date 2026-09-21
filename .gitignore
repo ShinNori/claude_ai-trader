@@ -7,3 +7,8 @@ __pycache__/
 *.sqlite-journal
 .pytest_cache/
 
+
+tools/automation/watch_status.json
+.test-deps/
+.pytest-tmp/
+build-codex/.pytest-tmp/

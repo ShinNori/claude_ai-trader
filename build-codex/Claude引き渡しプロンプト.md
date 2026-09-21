@@ -1,6 +1,14 @@
 # Claudeへの引き渡しプロンプト
 
-最終更新：2026-09-09 06:03 JST。今回の対象：L02修正、L03日時契約の決定・対応。
+> 最新：人工束保存API/CLI実装完了。今回Bは重要差分の独立確認1点。旧の未公開/契約作成依頼より本Bを優先する。
+
+> 最新：第13回CLIは完了。今回Bは保存契約だけの別依頼（未公開）。旧ops作業・CLIレビューは再実行しない。担当/数値上限はTEAM_WORKFLOW.mdを優先する。
+
+> 2026-09-17 最新B：CLI重要境界だけの依頼。最新Codex宛てBの公開指示に基づき本Bを有効とする。以下の旧停止/ops担当の一般記述より本BとTEAM_WORKFLOW.mdを優先する。
+
+> 運用変更（2026-09-11 04:25 JST、ユーザー指示）：ここからの開発はCodex単独で継続する。以下のA/Bは過去の引き渡し記録として保持し、新規依頼として実行しない。Claudeの利用制限中は回答・レビューを待たず、Codexが必要な修正・検証を担当する。ユーザーの連携再開指示まで引き渡し不要。詳細は ../AGENTS.md 冒頭。売買シグナルの二重承認契約は変更しない。
+
+最終更新：2026-09-09。今回の対象：ops v0.4.0独立レビューのA指摘修正・V10契約判断。
 
 ## 毎回の使い方
 
@@ -55,22 +63,63 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: ops v0.3.5レビューで検出したL02の修正とL03の日時契約の決定・対応
+今回の依頼: 人工束put/verifyの重要差分（原子性境界・hash照合・API呼出回数）の独立確認1点
 
-先にbuild-codex/OPS_V035_REVIEW.md、build-codex/README.md末尾、common/ISSUES.md最新追記、共通仕様フェーズ2改訂案v1.1の第9回追記、build-codex/tests/test_ops_v035_review.pyを読んでください。
+TEAM_WORKFLOW.mdの担当/上限を優先。旧Aのops修正・旧CLI全件確認を実施しない。通常Sonnet、子は必要時Sonnet層のみ最大3、Opus並列禁止。モデル切替2回まで。再実測は指摘に直結する1点のみ、追加反証30件目安、仮説のあるfuzzだけ合計3000束以内。製品実装はCodex、Claudeは重要差分確認と新規反証のみ。
 
-Codexはopsを変更せず17件の独立試験を追加しました。全体381件中378通過・3失敗（10.97秒）、skip/xfailなし。既存364件は通過。K06修正の再送・監査優先順位・交差kind・同期/再起動・ID衝突のerror化とバッチ継続、精算scope、cutover境界は通過です。
+【変更ファイル一覧】
 
-1. L02（A、2ケース）を修正してください。provenance付きSNAPSHOT前の業務時刻のTRADE/CSVを後から取り込みPENDINGにすると、そのSNAPSHOT前replayでLedgerNotInitializedになります。採用契約(c)どおり空（現金0・保有/予約なし）を返すようにし、旧台帳の残高を混入させないでください。既存の有効時刻再生、現在残高、マーカー検証の保護を維持してください。
-2. L03（B）の契約を決めて対応してください。未来の業務時刻を持つ保留CSVをそれ以前の時刻でDISCARDする操作は受理されるが、その中間時点のreplayで対象保留なしの例外となります。入力時の日時制約を採用するか、残高を先取りしない参照補完で再現するか、理由・影響・過去履歴互換を記録してください。入力拒否を採用した場合はCodex試験の受理前提と衝突するため、その失敗を分類して次のCodex依頼に期待値更新を明記してください。Codex試験を直接変更しないでください。不正履歴の参照欠落を一律に無視する実装は避けてください。
-3. 文書の誤記を訂正してください。str.strip()は全角空白・改行も前後から除去します。L05の3件が通過し、改訂案はこの事実に合わせてあります。「全角空白・改行は対象外」を維持しないでください。
-4. ops/testsへ修正に対する追加反例を置き、ops/で `python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q` を実行。ops/README.mdとops/Claude対応結果.mdへ実測数・失敗分類・残課題を記録し、次の具体的なCodex依頼をCodex引き渡しプロンプト.mdのBへ更新してください。
+| 相対パス | bytes | 更新時刻 | 目的 |
+|---|---:|---|---|
+| build-codex/aitrader/evidence_bundle_store.py | 13847 | 2026-09-17T22:38:08+09:00 | 新規製品/試験 |
+| build-codex/aitrader/evidence_bundle_store_cli.py | 1397 | 2026-09-17T22:33:04+09:00 | 新規製品/試験 |
+| build-codex/tests/test_evidence_bundle_store.py | 13664 | 2026-09-17T22:38:11+09:00 | 新規製品/試験 |
+| build-codex/tests/test_evidence_bundle_store_cli.py | 2605 | 2026-09-17T22:35:47+09:00 | 新規製品/試験 |
+| build-codex/EVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md | 25317 | 2026-09-17T22:33:54+09:00 | Codex採否補足 |
+| build-codex/README.md | 197712 | 2026-09-17T22:40:24+09:00 | 最新記録のみ・全読不要 |
+| build-codex/Codex継続プロンプト.md | 53823 | 2026-09-17T22:40:24+09:00 | 最新記録のみ・全読不要 |
+| build-codex/STRICT_EVIDENCE_STORAGE_PLAN.md | 9226 | 2026-09-17T22:40:24+09:00 | 最新記録のみ・全読不要 |
+| build-codex/COMPLETION_ROADMAP.md | 8434 | 2026-09-17T22:40:24+09:00 | 最新記録のみ・全読不要 |
 
-補足所見：ID衝突拒否の独立REJECTED監査、FRACTIONAL_CASHOUTとPOST_EXIT間の証憑単位重複防止は追加契約候補で、今回の必須修正へ無断で広げないでください。
+B自身は除外。依存参照はpacket_cli.pyの_mapping/_is_link/_unique_object、db.pyのdefault_home/_runtime_path_guard、history_validity_binding_v2.pyの公開APIのみ。既存ファイルは変更なし。
 
-編集範囲：ops/、common/ISSUES.md追記、Codex引き渡しプロンプト.mdのB。既存共通受入テスト・主系コード・Codex追加試験・共通仕様本文は変更しません。実台帳、実口座、実LLM、LINE操作はしません。
+【Codex 実測】
 
-完了条件：L02修正、L03契約と対応、strip文書訂正、全体の実測結果、対応文書・次のCodex依頼。終了報告は統一テンプレートで、時刻をコピー用の一文の直前に1回だけ表示してください。
+2026-09-17、Sol/high、cwd=build-codex。Windows/CPython3.12.14、PYTHONDONTWRITEBYTECODE=1。最終関連186 passed/5 skipped/0 failed/7.98秒。新規2本だけの最終結果47 passed/1 skipped/0 failed/1.59秒は関連結果に内包し、合算しない。5skipはWindows symlink作成権限不足（新規1・既存4）。新規32関数のparametrize展開が48ケースであり、30目安超過は入力/ID/記録/型差の境界固定のため。全体試験・fuzz・親の再実行なし。
+```text
+python -m pytest -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-ebs-final-related-8c9e07c41e9944bca0cc17cff3bf2007 tests/test_evidence_bundle_store.py tests/test_evidence_bundle_store_cli.py tests/test_evidence_history_fixture_v2.py tests/test_history_validity_binding_v2.py tests/test_history_validity_binding_v2_claude_contract.py tests/test_history_v2_clis.py tests/test_evidence_history_fixture_v2_cli.py tests/test_history_validity_binding_v2_cli.py tests/test_history_v2_cli_contract_additions.py tests/test_history_v2_cli_claude_contract.py -q
+```
+Python=C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。
+
+【今回 Claude に求める判断】
+
+1. put/verifyの原子性境界・raw hash照合・API最大1回（早期拒否0回）が、契約末尾のCodex採否と一致するか。snapshotと記録tmpの失敗分類、並行同ID投入、NO_OP非更新、破損非上書き、output型差を含む全キー比較だけに限定する。電源断保証/真性証明は契約対象外。採否補足が草案と衝突する場合は末尾優先。
+
+所見はbuild-codex/EVIDENCE_BUNDLE_STORE_INDEPENDENT_REVIEW.mdへ保存。必要な追加反証は新規test_*_claude_contract.pyのみ。製品/既存試験/共通仕様/examplesを変更せず、必要修正と判断だけCodex宛てBへ返す。実取込・増分DB・一覧/削除・日次接続・全件レビューは今回の検証範囲外。
+
+更新・終了：2026-09-17 22:40:24 JST。開始22:29:20 JST。技術レビュー受領9/20維持。使用率確認なし。最新Codex宛てBに従い保存後dev公開する。
+
+<!-- handoff-ready: d0d39bd8d22550403f062674da09d839fb866da75e7849b2eb56485e72fe44d9 -->
+
+## 過去のB（実行対象外）
+
+今回の依頼: ops v0.4.0独立レビューのA指摘修正とV10契約判断、追加49試験を含む再検証
+
+先にbuild-codex/OPS_V040_REVIEW.md、build-codex/共通仕様_フェーズ2_順序4_修正提案_v0.2.md、build-codex/tests/test_ops_v040_review.py、README末尾、common/ISSUES.mdの第16回追記を読む。
+
+今回のCodexデスクトップ許可済みユーザー環境では基準633 passed（18.95秒）。追加49件後は682件＝667 passed / 15 failed（17.13秒）、既存633維持、skip/xfailなし。追加失敗はA13ケースとB2ケース。別Codex子CLIのpytest一時フォルダエラーはQUESTIONS.mdに残り、今回解決していない。環境停止と実装指摘を混同せず、実行可能なClaude環境で次の修正・検証を行う。
+
+1. A指摘を修正する。V01（3件）全ログ経路の秘密値マスク、V02 SENDINGの回復・警告・予算保持、V03予算枠とclaimの原子性および古い行情報による状態巻戻し防止、V04期限切れUNKNOWNの保持、V05retry失敗時も既存UNKNOWNを未送信扱いしない、V06旧月の日次通知の失効、V07遅着STOP/RESUMEの順序、V08（2件）webhookの型崩れをINVALIDへ畳み込む、V09非ASCII署名を401、V13IDNによる会員ホスト禁止回避。詳細な再現・修正方向はレビュー表を優先する。実秘密・実ネットワークは使わない。
+2. V10（2件、B）の未来時刻STOP/RESUME拒否案を判断し、採否と理由・影響を明記する。STOPだけ受信即時優先等の例外を採るならその契約を明示し、Codex試験を無断で変更しない。
+3. ops/testsへ独立回帰試験を追加する。並行予算は集計値だけでなく実際の合成送信呼出回数を確認。SENDING/UNKNOWNの各クラッシュ点、月境界・再起動・遅着制御を検証。共通受入テストやCodex試験の削除・skip/xfail・条件緩和は禁止。
+4. ops/でpython -m pytest ../common/tests/phase2 ../build-codex/tests tests -qを実測。ops/README.mdとClaude対応結果.mdに指摘別結果、件数、残課題を記録。common/ISSUES.mdは追記のみ。完了後にCodex宛てBへ具体的な独立レビュー依頼を一件記載し、publish --channel dev --agent codexで公開する。
+
+編集範囲はops/、common/ISSUES.md追記、Codex宛て依頼と履歴。主系・共通仕様本文・既存受入テストは変更しない。仕様案v0.2のLedger.proposal/Notifier.close/reconcile_sentとcli/line拒否の説明も照合。自動連携autoのE系列、子CLIの権限修復・監視解除は別枠。QUESTIONS.mdの未回答項目を自己解決しない。実口座・LINE・審査LLMは呼ばない。
+
+完了条件: A指摘の修正と独立試験、V10の採否、指定全体の実測、文書更新、Codexへの次依頼公開。全件通過は実測が通った場合だけ記載する。
+
+<!-- handoff-ready: 5b000242c5688a3d1426d6665b8be0783591a1d434d7b59b221bbd4f72a15b57 -->
+
 ## 今後の更新ルール（Codex向け）
 
 ユーザーの依頼により、このファイルを毎回の引き渡し先として使う。今後Codexが作業を完了する際は、Aを共通の制約として維持し、Bをその時点の最新依頼に更新する。今回の数字やR番号を次のフェーズへ無条件に引き継がない。
@@ -89,7 +138,7 @@ tools/PINGPONG.md「運用ルール」の5点を、Codex側にも適用する。
 4. 全体が完了した場合は、相手向けBの先頭行を `今回の依頼: 引き渡し不要（理由）` にする。
 5. 引き渡しMDの「過去の依頼」にも開始・終了JSTと結果を記録する。`tools/pingpong_history.md` は機械側の別記録であり、手動履歴の代わりにはしない。取得していない開始時刻は未取得と書く。
 
-自分宛ての `Codex引き渡しプロンプト.md` のBは原則読取専用。今回の明示依頼に含まれる「第10回保留依頼への復元」だけは例外として履歴を残す。今回、このClaude向けBは変更しない。ops v0.3.6の第10回完了後に次依頼へ更新し、その際に [PINGPONG_REVIEW.md](PINGPONG_REVIEW.md) のH01〜H18への対応も引き渡す。現行ランチャーは未修正であり、この規則追記だけで無人運用に適合したとは扱わない。
+自分宛ての `Codex引き渡しプロンプト.md` のBは原則読取専用。自動連携は `tools/自動連携_Codex依頼.md` の別枠となったため、自動連携作業では開発ループの両Bを変更しない。[PINGPONG_REVIEW.md](PINGPONG_REVIEW.md) の指摘は [自動連携専用のClaude依頼](AUTOMATION_CLAUDE_HANDOFF.md) で管理し、opsの次回依頼に混ぜない。規則の追記だけでランチャーの適合を保証せず、対象版を特定した再検証を必要とする。
 
 ### 完了報告の必須表示（2026-09-09 指定の統一テンプレートを優先）
 
@@ -102,3 +151,47 @@ ai-trader の作業フォルダで、〈相手向け引き渡しMD〉を読み�
 ```
 
 次の作業がない場合は引き渡し不要と明記する。履歴には開始・終了を記録し、未取得の開始時刻を推測しない。
+
+## 過去の依頼（開始・終了JST）
+
+| 開始 | 終了 | 依頼 | 結果 |
+|---|---|---|---|
+| 2026-09-09 06:29（確認開始） | 2026-09-09 06:40 | 第10回 ops v0.3.6指定修正確認・独立レビュー追補 | 402件中401通過・O01の1失敗。次はClaudeのO01修正・文書明確化・再検証 |
+| 2026-09-09 06:58 | 2026-09-09 07:07 | 第11回 ops v0.3.7独立レビュー・時計依存フィクスチャ修正 | 430件中428通過・Q09/Q10の2失敗。次はClaudeの契約決定・対応 |
+
+| 2026-09-09 08:14（最初の時計取得） | 2026-09-09 08:21 | 第12回 ops v0.3.8独立レビュー・Q09更新・改訂案(i)(j) | 457件中453通過・T06/T07の4失敗。次はClaude対応 |
+
+| 2026-09-09 08:52 | 2026-09-09 08:56 | 第13回 ops v0.3.9独立レビュー・T07更新・改訂案(k) | 487件全件通過。次はClaudeの文書明確化・最終照合 |
+
+| 開始(JST) | 終了(JST) | 作業 | 結果 |
+|---|---|---|---|
+| 未取得 | 2026-09-09 11:18 | 第16回ops v0.4.0独立レビュー（デスクトップ） | 682件中667通過・15失敗、追加49。次はClaudeのA修正・V10判断。子CLI環境質問は未解除 |
+
+
+
+## 退避したB（CLI差分確認の前）
+
+### 退避した旧依頼
+
+今回の依頼: 引き渡し不要（第12回受領・Windows関連79件全通過・記録完了、追加判断なし）
+
+今回のdev終了通知。Aの過去ops修正・全体再試験は実行しない。
+
+【変更ファイル一覧】
+build-codex/README.md / 183597 bytes / 2026-09-17T14:31:50+09:00 / 第12回受領・Windows実測・R12-01記録
+build-codex/Claude_Opusキャッチボール.md / 5950 bytes / 2026-09-17T14:31:50+09:00 / 第12回完了・開始終了履歴
+運用文書のみ変更。製品・既存試験・Claude新規試験・契約§3-3は変更なし。一次資料はbuild-codex/Claude_Opusレビュー_証拠履歴_第12回.mdの結論・R12-01・対象hash。製品2ファイルと指定試験3ファイルのSHA256は同報告と一致。新規試験SHA256: eaea04af2ff5f49f9d2182da7ff456993f3e28feb1683e623b953fdba9e57b32。
+
+【Codex 実測】
+2026-09-17 / 実行場所build-codex / 指定3ファイルを1回 / 79 passed・0 skipped・0 failed / 0.27秒 / Windows 11 (10.0.26200)、CPython 3.12.14 AMD64、pytest 9.1.1 / skip理由なし。
+python -m pytest tests/test_evidence_history_fixture_v2.py tests/test_history_validity_binding_v2.py tests/test_history_validity_binding_v2_claude_contract.py -q -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-r12-codex-20260917-1430
+python=C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。PYTHONDONTWRITEBYTECODE=1。全体3024件は再実行なし。公式アカウント共通使用率・残量は取得不能で不明。
+
+【今回 Claude に求める判断】
+追加判断なし。独立レビューのバグ0・契約違反0・3判断一致を受領。R12-01は記録のみ、任意の契約追記は見送り。実装・全体再試験・追加レビューは今回の検証範囲外。v2 CLI等の新工程へ拡張しない。
+
+開始: 2026-09-17 14:30:41 JST（最初の時計確認）。成果・履歴保存済み。今回の依頼hash: 2f6596365155a6633400d49ccd766d6b2be4757fcee1a8d9454cb20c92d584e8。
+更新時刻: 2026-09-17 14:32:10 JST
+
+<!-- historical-ready: a4e930a2243211e6c646cab2ab8fe7fbd879e0e47e348321f9c341ed11a5d10f -->
+

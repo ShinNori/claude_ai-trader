@@ -524,3 +524,335 @@ M01 provenance 台帳で後着保留・遅着通知・訂正があっても SNAP
 ### 6. 変更ファイル
 
 `ops/aitrader_ops/ledger.py`、`ops/aitrader_ops/__init__.py`（v0.3.6）、`ops/tests/test_v036_review_claude.py`（新規）、`ops/README.md`、本記録、`common/ISSUES.md`（追記）、`Codex引き渡しプロンプト.md`（B と履歴）。実台帳・外部サービスは操作していない。
+
+
+## 2026-09-09 第11回：ops v0.3.7 — O01 修正・文書明確化・独立再検証（Claude、Cowork セッション）
+
+対象: Codex 第10回追補 `build-codex/OPS_V036_FOLLOWUP_REVIEW.md`（O01〜O05）と `build-codex/Claude引き渡しプロンプト.md` B の 4 項目。
+
+### 1. O01（A）の修正 — 遅着通知を参照する保留 APPLY の時点再生
+
+**採用: 既存の遅着約定と同じ「識別だけを持ち込む」方針を、確定した保留解決にも適用。** `Ledger.replay(at)` の `needed`（時点内の約定が参照する通知 ID）を `TRADE` / `CSV_FILL(_applied_proposal_id)` に加えて `PENDING_RESOLVED(action=APPLY)` の `proposal_id` からも集め、業務時刻が `at` より後の `NOTICE_CREATED` は従来どおり `context_only`（予約なし）で読み込む。
+
+- 先取りなし: PENDING_RESOLVED 自体は業務時刻フィルタの対象なので、解決より前の時点では保留行のまま（残高不変）。解決時刻ちょうどで現金・保有に入る。
+- 未来予約の非漏出: context_only の通知は `_recalc` で予約に数えない。約定で残数量が 0 になるので、通知作成時刻以後の再生でも予約は 0（P01 で全時点を検査）。
+- DISCARD は対象外: 通知を参照しないため識別を持ち込まない。通知作成時刻以後は通知の予約が通常どおり現れる（P04）。
+- 不明参照の一律無視はしていない。時点内に解決があるのに通知が履歴のどこにもなければ従来どおり LedgerError。
+- 契約変更なし: L03 の入力制約（解決は保留行の業務時刻以後）は維持。Codex 試験の期待値は変更していない。
+
+### 2. 文書の明確化（第10回の記述の訂正）
+
+- 早い解決の拒否: `ledger_events`・残高・保留行は不変だが、`ingest_attempts` に `REJECTED / VALIDATION`（detail に理由）が残る（実測）。第10回の「履歴に残らない」は残高イベント列の意味であり、監査は残る。README・本記録の表現を改めた。
+- 09:00 の過去残高と現在の保留: `replay(09:00)` が返す `LedgerView` には pending 欄がなく、「10:00 の保留を含む」とは言えない。現在の保留は `pending_rows()`。
+- `migrate --check`: 逆順解決の位置は、マーカーなしは exit 0 の `violation` 欄、マーカー後は exit 1 の `MigrationError` 欄。どちらでも seq / kind が取れる（Codex O04 実測を引用）。
+
+### 3. 追加試験 `ops/tests/test_v037_review_claude.py`（P01〜P07、9 ケース、全通過）
+
+P01 解決前（保留時刻の前後・解決 1µs 前）は 1000000・予約 0、解決時刻ちょうど・以後は 900000・100 株・予約 0、通知作成時刻以後は現在残高と一致 / P02 別オフセット（UTC・−05:00・+09:00）で同じ瞬間 / P03 通知作成時刻＝解決時刻 / P04 DISCARD は通知を持ち込まず、通知作成時刻以後に予約 100200 / P05 再起動後の一致と `replay_known`（CSV→通知→解決の記録順で各 seq の残高・予約） / P06 再生は読取専用（`ledger_events`・現在残高・seq 不変） / P07 L02（開始残高前は空）と L03（早い解決は拒否、seq・残高・保留不変）の維持。
+
+### 4. 実測（ops/ で `python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q`、Claude 作業環境＝則光さんの PC 上の Cowork VM）
+
+| 区分 | 件数 | 結果 |
+|---|---|---|
+| 受領時（Codex 追補の再現） | 402 | 401 通過 / 1 失敗（O01） |
+| O01 修正後（追加前） | 402 | 402 通過 |
+| P01〜P07 追加後 | **411** | **410 通過 / 1 失敗**。skip/xfail なし |
+
+内訳: 共通 162 ＋ 主系/レビュー 74 ＋ ops 175（Codex 61 ＋ Claude 114）。**全件通過ではない。**
+
+残る 1 失敗の分類:
+
+| テスト | 分類 |
+|---|---|
+| `common/tests/phase2/test_ledger.py::test_unconfirmed_next_jst_morning` | **時計依存（テスト前提の誤り、今回の変更と無関係）**。`ledger` フィクスチャが `create_notice(p)` を `at` なしで呼ぶため `created_at` が実行時刻になり、固定の 2026-09-09 06:50 JST を実行時刻が超えた時点（同日 06:50 JST 以降、恒久的）で `unconfirmed(morning)` に含まれなくなる。第10回追補の実測（06:40 JST）では通過していた。共通所有のため未変更。フィクスチャで `at=AT` を渡す修正を Codex に依頼 |
+
+### 5. 変更ファイル
+
+`ops/aitrader_ops/ledger.py`（replay の needed）、`ops/aitrader_ops/__init__.py`（v0.3.7）、`ops/tests/test_v037_review_claude.py`（新規）、`ops/README.md`、本記録、`common/ISSUES.md`（追記）、`Codex引き渡しプロンプト.md`（B と履歴）。実台帳・実口座・実 LLM・LINE は操作していない。自動連携（H 系列）はこの開発ループに混ぜていない。
+
+
+## 2026-09-09 第12回：ops v0.3.8 — Q09/Q10 の契約決定・対応・独立再検証（Claude、Cowork セッション）
+
+対象: Codex 第11回 `build-codex/OPS_V037_REVIEW.md`（Q01〜Q10）と `build-codex/Claude引き渡しプロンプト.md` B の 5 項目。
+
+### 1. Q09（B）— 訂正の業務時刻の契約
+
+**採用: 入力時の日時制約。** 訂正（CORRECTION）の `at` は、訂正対象の約定が残高に反映された業務時刻（有効時刻）以後に限る。有効時刻は、通常の約定＝約定時刻、保留 APPLY＝解決時刻、訂正の訂正＝その訂正の時刻。約定記録に `effective_at` を追加して判定する（`_apply_fill(effective_at=…)`、`_on_pending_resolved` は解決時刻を渡す）。違反は LedgerError で、`ingest_attempts` に REJECTED/VALIDATION が残り、`ledger_events`・残高・seq は不変（R01）。同時刻は別オフセット表記でも受理（R02）、時刻なし訂正は制約なし（R04）。`rule_version ≥ 3` のみ。
+
+比較した案:
+
+| 案 | 内容 | 判断 |
+|---|---|---|
+| A. 入力拒否（採用） | 訂正時刻 < 対象の有効時刻を拒否 | L03 と同じ原則（対象がない時刻に効果だけが現れる履歴を作らない）。通常約定の前倒し訂正（従来から再生不能）も同じ規則で閉じる |
+| B. 再生契約（不採用） | 時点再生で訂正を「対象が反映されるまで保留」し、対象の有効時刻に効かせる | 業務時刻 09:30 の訂正が 10:00 に効くという二重の意味になる。未来 APPLY の識別だけでなく金銭効果の先取り／遅延の規則が新たに要る。B の「未来の APPLY を一律に先取りする修正は禁止」にも抵触しやすい |
+| C. 参照欠落を無視 | 対象が見つからない訂正を再生で読み飛ばす | 禁止（黙って無視） |
+
+互換: v0.3.8 より前に受理された前倒し訂正を含む履歴は再起動時に `MigrationError(seq, TRADE)`、`migrate --check` の violation に位置（R05）。実台帳未作成のため影響なし。旧 v0.2 区間は対象外。
+
+Codex 試験との衝突（テスト前提の変更、変更していない）: `build-codex/tests/test_ops_v037_review.py::test_q09_backdated_correction_before_apply_has_valid_replay`（09:30 の前倒し訂正が `.applied` になる前提）。新契約では拒否され、`replay(09:30)` は現金 1000000 で成立する。次回 Codex に期待値更新を依頼。
+
+### 2. Q10（B）— 通知状態・期限切れの参照
+
+**採用: 状態参照にも識別だけを補完（O01 と同じ方針）。** `replay(at)` の `needed` に、時点内の `NOTICE_STATE` の `proposal_id` と `EXPIRE` の `proposal_ids`（列挙分のみ）を加える。参照先の通知が時点外なら context_only で読み込むため、予約 0・解決前の残高非先取りは保たれる（R06/R07）。通知作成を消した故障注入は従来どおり LedgerError / MigrationError（R08）。Q04 の形は維持（R09）。
+
+通知状態の業務時刻を作成時刻以後に制限する案は不採用。Q04（作成 14:00 の通知への 11:00 承認・12:00 送信・期限切れ）が受理・通過している既存契約と衝突し、金銭効果のない状態のために旧履歴を MigrationError にする必要がない。
+
+### 3. 追加試験 `ops/tests/test_v038_review_claude.py`（R01〜R10、12 ケース、全通過）
+
+R01 前倒し訂正の拒否・監査行・残高/seq 不変 / R02 有効時刻ちょうど（3 オフセット）と以後の受理、訂正の訂正の有効時刻、作成時刻以後の予約は Q04 と同じ / R03 通常約定の前倒し訂正も拒否 / R04 時刻なし訂正は制約なし / R05 旧版履歴の MigrationError(seq=4, TRADE) と check 位置 / R06 作成前の APPROVED/SENT/EXPIRE を各中間時点で再生、再起動・replay_known 一致 / R07 複数 ID の EXPIRE は列挙分のみ、再生は読取専用 / R08 故障注入は拒否 / R09 Q04 の形の維持 / R10 L03・O01・合算・残数量超過拒否の維持。
+
+### 4. 実測（ops/ で `python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q`、Claude 作業環境＝則光さんの PC 上の Cowork VM）
+
+| 区分 | 件数 | 結果 |
+|---|---|---|
+| 受領時（Codex 第11回の再現） | 430 | 428 通過 / 2 失敗（Q09、Q10） |
+| Q09 拒否・Q10 補完の実装後（追加前） | 430 | 429 通過 / 1 失敗（Q09＝前提変更） |
+| R01〜R10 追加後 | **442** | **441 通過 / 1 失敗**。skip/xfail なし |
+
+内訳: 共通 162 ＋ 主系/レビュー 93 ＋ ops 187（Codex 61 ＋ Claude 126）。**全件通過ではない。**
+
+| テスト | 分類 |
+|---|---|
+| `build-codex/tests/test_ops_v037_review.py::test_q09_…` | テスト前提の変更（Q09 で入力拒否を採用。Codex が期待値を更新） |
+
+### 5. 変更ファイル
+
+`ops/aitrader_ops/ledger.py`（`effective_at`、CORRECTION の時刻制約、replay の needed に NOTICE_STATE/EXPIRE）、`ops/aitrader_ops/__init__.py`（v0.3.8）、`ops/tests/test_v038_review_claude.py`（新規）、`ops/README.md`、本記録、`common/ISSUES.md`（追記）、`Codex引き渡しプロンプト.md`（B と履歴）。改訂案 v1.1 への (i)(j) 追記は Codex に依頼（親フォルダは Claude の編集範囲外）。実台帳・実口座・実 LLM・LINE は操作していない。自動連携は別枠。
+
+
+## 2026-09-09 第13回：ops v0.3.9 — T06 修正・T07 契約決定・独立再検証（Claude、Cowork セッション）
+
+対象: Codex 第12回 `build-codex/OPS_V038_REVIEW.md`（T01〜T09）と `build-codex/Claude引き渡しプロンプト.md` B の 5 項目。
+
+### 1. T06（A）— EXPIRE の不明参照
+
+`_State._on_expire` の辞書直接参照を `get` に変え、台帳にない `proposal_id` は `LedgerError("通知 <id> がありません")`。時点再生は LedgerError、再起動（`_rebuild`）は `MigrationError(seq, 'EXPIRE')`、`migrate.check` は新規則でも旧規則でも再構築不能なので `MigrationError(kind='EXPIRE', seq=位置)` を送出する（violation の正常戻り値ではない）。列挙の一部だけ不明でもその ID を名指しする（S02）。合成故障注入の話であり、正常入力での残高破壊ではない。
+
+### 2. T07（B）— 時刻なし訂正の契約
+
+**採用: 有効時刻の継承。** 時刻なし訂正は訂正対象の有効時刻（`effective_at`）を継承し、時点再生の時刻フィルタにもその継承時刻を使う（`Ledger._effective_rows`）。表示時刻（`at`）は None のまま、有効時刻だけを持つ。
+
+| 案 | 内容 | 判断 |
+|---|---|---|
+| A. 有効時刻の継承（採用） | 時刻なし訂正は対象の有効時刻に効く。以後の日時付き訂正は継承時刻を基準に Q09 を適用 | 「時刻なし入力に時刻制約は掛からない」（L03・v0.3.8 の採用）を保ちつつ、対象より前の時点に現れない（非先取り）。履歴の意味が一重 |
+| B. 入力拒否 | 時刻なし訂正を退ける | 時刻なし保留行・時刻なし約定を受理している現契約と整合しない。退ける理由がない |
+| C. 再生で対象欠落を読み飛ばす | 対象がない時点では訂正を無視 | 禁止（不明参照の無視）。継承であれば「対象がない時点」は生じない |
+
+境界: 対象が時刻なし（時刻なし約定を時刻なし訂正）なら継承する時刻もなく、従来どおり常に時点内（S06）。`replaces_event_id` のない時刻なし訂正は対象を状態から決めるため継承できず、従来どおり常に時点内（対象が時点外なら従来どおり「訂正対象がありません」で停止する。現行の呼び出し側は常に `replaces_event_id` を渡す）。
+
+互換: v0.3.9 より前に受理された「時刻なし訂正 → それより前の日時付き再訂正」は再起動で `MigrationError(seq, TRADE)`、check の violation に位置（S07）。実台帳未作成。旧 v0.2 区間は対象外。
+
+Codex 試験との衝突（テスト前提の変更、変更していない）: `test_ops_v038_review.py::test_t07_timeless_correction_chain_remains_replayable` の 2 件目の訂正（時刻なし訂正を 09:00 で再訂正）が `.applied` になる前提。新契約では拒否され、`replay(09:00)` は現金 1000000 で成立する（S04 で確認）。
+
+### 3. 追加試験 `ops/tests/test_v039_review_claude.py`（S01〜S11、12 ケース、全通過）
+
+S01 EXPIRE 不明参照: replay LedgerError、再起動・check とも MigrationError(kind=EXPIRE, seq=位置) / S02 正常な複数 ID の EXPIRE と一部不明の名指し / S03 保留 APPLY の時刻なし訂正は 10:00 に効き、09:00・直前は未反映、再起動一致 / S04 継承時刻より前の再訂正は拒否（監査行・残高/seq 不変）、10:00 ちょうど（UTC 表記）以後は受理、各時点再生 / S05 通常約定の時刻なし訂正の連鎖 / S06 時刻なし対象は継承なし / S07 旧版履歴の MigrationError と check 位置 / S08 SELL 価格のみ訂正の取得原価維持 / S09 部分合算・時刻なし訂正・取消後の訂正と予約 / S10 cutover 遮断（日時付きは拒否、時刻なしは cutover 保留。新しい正常経路なし） / S11 Q09/Q10 維持。
+
+### 4. Codex 指摘 4（自試験のコメント訂正）
+
+R06: 「EXPIRED なので残 60 株予約なし」→「EXPIRED は予約を解放しないので作成時刻以後は 60120 が残る」に訂正し、`replay(H6).reserved == 60120` の assert を追加。R07: other も期限切れ集合に入るため「列挙外」の説明を撤回し、列挙外の非補完は Codex T05 の直接観測に委ねる旨を記載。名称も `…replays_without_reservation` に変更。
+
+### 5. 実測（ops/ で `python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q`、Claude 作業環境＝則光さんの PC 上の Cowork VM）
+
+| 区分 | 件数 | 結果 |
+|---|---|---|
+| 受領時（Codex 第12回の再現） | 457 | 453 通過 / 4 失敗（T06×3、T07） |
+| T06 修正・T07 継承の実装後（追加前） | 457 | 456 通過 / 1 失敗（T07＝前提変更） |
+| S01〜S11 追加・R06/R07 訂正後 | **469** | **468 通過 / 1 失敗**。skip/xfail なし |
+
+内訳: 共通 162 ＋ 主系/レビュー 108 ＋ ops 199（Codex 61 ＋ Claude 138）。**全件通過ではない。**
+
+| テスト | 分類 |
+|---|---|
+| `build-codex/tests/test_ops_v038_review.py::test_t07_…` | テスト前提の変更（T07 で有効時刻の継承を採用。Codex が期待値を更新） |
+
+### 6. 変更ファイル
+
+`ops/aitrader_ops/ledger.py`（`_on_expire` の不明参照、CORRECTION の有効時刻継承、`_effective_rows`）、`ops/aitrader_ops/__init__.py`（v0.3.9）、`ops/tests/test_v039_review_claude.py`（新規）、`ops/tests/test_v038_review_claude.py`（R06/R07 のコメント・assert）、`ops/README.md`、本記録、`common/ISSUES.md`（追記）、`Codex引き渡しプロンプト.md`（B と履歴）。改訂案 v1.1 への (k) 追記は Codex に依頼。実台帳・実口座・実 LLM・LINE は操作していない。自動連携は別枠。
+
+
+## 2026-09-09 第14回：ops v0.3.9 の双方確認完了 — 文書の明確化 C01/C02 と最終照合（Claude、Cowork セッション）
+
+対象: Codex 第13回 `build-codex/OPS_V039_REVIEW.md`（U01〜U05、C01/C02）と `build-codex/Claude引き渡しプロンプト.md` B の 3 項目。実装変更なし。
+
+### 1. C01 — 旧規則区間の適用範囲の明確化
+
+「旧 v0.2 区間は対象外」は Q09 の入力制約（`_on_trade` の `rule_version >= 3` 付き比較）に限る。有効時刻の継承（`effective = at if at is not None else target.get('effective_at')`）と `_effective_rows` の事前走査には版判定がなく、旧区間の履歴にも適用される。区別: 旧区間の**受理済み残高の保持**（現在残高・`replay_known`。U04 で 962000 を確認）と、**過去版との時点表示の完全互換**（保証しない。旧版では時刻なし訂正が常に時点内、v0.3.9 では対象の有効時刻以後）。README 第14回に記載。
+
+### 2. C02 — `replaces_event_id` 省略時の明確化
+
+省略時は状態側が直前の有効約定を対象に選び `effective_at` を継承するが、事前走査 `_effective_rows` は対象を解決せず時刻フィルタは None（常に時点内）。「継承できず従来どおり」は事前走査の制限に限定し、明示 ID 付きの時点再生保証を省略経路へ広げない。省略は公開モデルで許され共通仕様にも記載があるため、「呼び出し側が常に指定」を API 保証としない。第13回の記載を上記のとおり訂正（README 第14回）。新契約・実装の追加はしない。
+
+### 3. 最終照合と実測
+
+- T07 期待値更新（`test_ops_v038_review.py`）: 採用契約どおり（時刻なし訂正受理、09:00 再訂正は拒否・残高/seq 不変、10:00 再訂正 962000）。
+- U01〜U05（18 件）: 明示 ID 付き継承（TRADE/CSV/保留経由 × 時刻あり/なし、連鎖、別オフセット、再起動・replay_known・表示 at=None）、記録順と時刻順の逆転、不明参照の LedgerError/MigrationError（NOTICE_STATE・時刻なし CORRECTION）、旧履歴の check 2 形式と原本不変・正規移行後の残高保持、cutover 保留の APPLY/訂正拒否。ops/README 第13回・本記録第13回の記述と一致。
+- 改訂案 v1.1 (k): 親フォルダは Cowork の接続範囲外のため本セッションでは未読。Codex 報告（(k) 追記済み）を採用し、内容の照合は則光さんまたは次回 PC 上の Claude Code に委ねる。
+- 実測（ops/、Cowork VM）: **487 件＝487 通過、skip/xfail なし。全件通過**（共通 162＋主系/レビュー 126＋ops 199）。Codex の 487 通過と一致。
+
+### 4. 結論と次
+
+新しい欠陥なし。ops v0.3.9 の双方確認を完了とし、Codex 宛て B を「引き渡し不要（ops v0.3.9 の双方確認完了）」として dev チャネルに公開。開発ループの次の題材（フェーズ2 後半の残り: 順序3 実行器の統合、通知層・LINE、J-Quants 実データ）は則光さんの判断で再開する。変更ファイル: `ops/README.md`、本記録、`common/ISSUES.md`（追記）、`Codex引き渡しプロンプト.md`（B と履歴）。
+
+## 第16回（2026-09-09 11:05 JST）— フェーズ2 順序4: ops v0.4.0 judges / notify の実装（Claude、Cowork セッション）
+
+依頼: 第15回（Codex）の成果 `build-codex/共通仕様_フェーズ2_順序4_修正提案_v0.1.md` と先行受入テスト `common/tests/phase2/test_judges.py`（69）/ `test_notify.py`（47）。Codex はサンドボックスに pytest がなく実測できず質問で停止 → 則光さんの回答「両方」（Claude が実測して実装を進める。Codex 側は pytest 導入後に再実行）を `build-codex/QUESTIONS.md` に転記して解決。
+
+### 1. 実装（ops/aitrader_ops、すべて stub 前提。実 CLI・実 LINE・実 LLM・実口座は呼ばない）
+
+| ファイル | 内容 |
+|---|---|
+| `judges.py` | `review(...)`: パケット JSON から Proposal を復元し 14 フィールドの hash を再計算。締切 = min(expires_at, その JST 日の 07:15)。record（stdout / final_message / exit_code / elapsed_seconds）を stub / replay から読み、Claude は `type=result` 外包の `result` 文字列、Codex は `final_message` を厳密 JSON（重複キー・NaN/Infinity 拒否、additionalProperties=false、型・範囲）で検証。失敗種別の優先順位は 入力 hash → 締切 → timeout → process_error → malformed → 応答 ID/hash。Verdict のメタデータ（judge/model/cli_version/run_id/received_at）は親指定。決定ログは `log_dir/judges-YYYYMMDD.jsonl`（packet 原文・record・failure・正規化 verdict。秘密値マスク・64KB 上限。保存失敗は例外で停止）。`build_cli_request(...)`: 起動計画の純粋生成（`claude -p --output-format json --max-turns 1 --tools "" --strict-mcp-config --mcp-config …` / `codex exec - --output-schema … --output-last-message <一意> --sandbox read-only --skip-git-repo-check`）。transport=cli は隔離環境の確認が未実施のため ValueError で拒否 |
+| `notify.py` | `render_message`: NEW/EXIT の Flex カード（confidence 不掲載、楽天リンクは {code} のみ展開・https・rakuten-sec.co.jp 正規サブドメイン・userinfo なし・member. 禁止）、RECONCILE/RISK の text（status 文言 5 種）。`Notifier`: SQLite outbox（同一 key の内容差し替え拒否、同一候補はキーを変えても重複しない、NEW/EXIT は台帳 APPROVED/SENT 必須）。`flush`: 送信直前に 期限（07:15 / expires_at）→ 台帳状態 → STOP（kv と STOP ファイルの OR）→ 月予算（JST 暦月・成功＋成否不明を計上・超過は BUDGET_BLOCKED と BUDGET_EXCEEDED 警告）を再確認し、SENDING claim で並行 flush の二重送信を抑止。成功の耐久記録の後に台帳 `SENT`。失敗は PENDING（予算戻し）、成否不明は UNKNOWN（同一 retry_key で再試行、24 時間超は RETRY_EXPIRED 警告で照合待ち）。`reconcile_sent`: 成功記録と台帳更新の間で落ちた行を同一成功から復旧。`handle_webhook`: 生 body の HMAC-SHA256 を JSON 解析より先に検証（401）、壊れた JSON は 400、許可 userId の 1 対 1 のみ（FORBIDDEN）、webhookEventId 必須・業務 payload hash で DUPLICATE/CONFLICT、ボタン → `Ledger.report(TradeEvent('line:'+id …))`（PARTIAL/FILLED は実 qty/price/fee 必須＝NEEDS_DETAILS、未来時刻 INVALID、不明候補 UNKNOWN_PROPOSAL）、STOP/RESUME（reconciled_at は親確認値のみ） |
+| `ledger.py` | `Ledger.proposal(proposal_id)` を追加（通知に記録された Proposal の公開コピー。notify の期限再確認に使う。private 属性へのアクセスをやめるため） |
+| `config/prompts/review-v1.txt` / `review-v1.schema.json` | 共通審査プロンプト（参照資料内の命令無効・数量価格変更禁止・UNKNOWN は ABSTAIN・必須観点）と応答スキーマ |
+
+### 2. 実測（ops/ で `python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q`、Claude 作業環境）
+
+| 区分 | 件数 | 結果 |
+|---|---|---|
+| 受領時（第15回の受入テスト込み、実装前） | 603 | 487 通過 / 116 失敗（未実装） |
+| 実装後 | 603 | 603 通過 |
+| Claude 独立試験追加後（`ops/tests/test_v040_order4_claude.py` Q01〜Q09・R01〜R10、30 ケース） | **633** | **633 通過。全件通過**。skip/xfail なし |
+
+独立試験の範囲（仕様案 §5 の後続検証項目）: 引数契約・cli 拒否・ログ保存失敗で承認を返さない・秘密値マスクと出力上限・失敗優先順位・UTC 入力での締切・追加の malformed 形・純粋 ABSTAIN と replay の読取専用・CLI 計画の純粋性と一意出力／パス走査拒否 / 信用・方向違い・不正テンプレートの拒否・enqueue 契約と同一候補の重複抑止・UNKNOWN の予算保持と 24 時間期限・失敗の予算戻しと翌月・STOP ファイルの OR と RESUME 後の実効停止・成功記録と台帳更新間のクラッシュ復旧・並行 flush・署名後の不正 JSON と非 dict イベント・報告の型違反／残数量超過／配送メタデータ差の DUPLICATE・confidence の非漏出。
+
+### 3. 契約の隙間・所見（`common/ISSUES.md` に追記）
+
+1. 通知期限の再確認に台帳の Proposal が必要で、公開 API がなかった → `Ledger.proposal()` を追加（ops 内で解決）。
+2. `test_notify.py` は Notifier を close せず `tmp_path` に SQLite を残す（Windows では一時フォルダ削除時に警告になり得る）。Codex 所有のため未変更。
+3. transport=cli / line は未接続。実 CLI の引数・出力形式は一次資料のみで、実機での互換確認は後続工程（設計書 10 章フェーズ 0）。
+4. Codex サンドボックスの pytest 未導入は環境課題として継続（則光さんが導入 → Resume）。
+
+### 4. 変更ファイル
+
+`ops/aitrader_ops/judges.py`・`notify.py`（新規）、`ledger.py`（`proposal()` 追加）、`__init__.py`（v0.4.0）、`ops/config/prompts/review-v1.txt`・`review-v1.schema.json`（新規）、`ops/tests/test_v040_order4_claude.py`（新規 30）、`ops/README.md`、本記録、`common/ISSUES.md`（追記）、`build-codex/QUESTIONS.md`（回答転記）、`Codex引き渡しプロンプト.md`（B と履歴）。
+
+## 第17回（2026-09-09 11:40 JST）— ops v0.4.1: Codex 第16回レビュー（V01〜V13）の A 修正と V10 の契約判断（Claude、Cowork セッション）
+
+依頼: `build-codex/Claude引き渡しプロンプト.md` B（11:18 発行、自動連携経由）。対象は `build-codex/OPS_V040_REVIEW.md` の A 13 ケース・B 2 ケース。受領時の再現: 682 件中 667 通過 / 15 失敗（Codex 実測と一致）。
+
+### 1. 指摘別の対応
+
+| ID | 対応 |
+|---|---|
+| V01（3）| 決定ログの行全体（packet・record の全キー・verdict・raw_answer）に再帰的な秘密値マスクと 64KB 上限を適用（`_mask_deep`）。戻り値の Verdict はマスクしない（ログだけ） |
+| V02 | 送信関数が例外で落ちた行は、自分の claim を持つ間に UNKNOWN（同一 retry_key・月枠保持・SEND_UNKNOWN 警告）へ更新してから例外を伝える。プロセスごと落ちて SENDING が残った行は、猶予（10 分）超過で UNKNOWN へ回復して再試行。猶予内は他 flush の処理中とみなし触らない |
+| V03 | 予算確認と claim を同一 `BEGIN IMMEDIATE` に入れ、SENDING も月枠に計上。行の更新は `state='SENDING' AND claimed_by=自分` の条件付きにして、古いスナップショットや他 claim による SENT 巻戻しを防ぐ |
+| V04 | UNKNOWN 行は候補期限・07:15・STOP を過ぎても EXPIRED にしない（UNKNOWN のまま・予算保持・SEND_UNKNOWN 警告） |
+| V05 | 一度 UNKNOWN になった行は後続試行が failure でも UNKNOWN のまま（未送信と断定しない）。success で SENT |
+| V06 | RECONCILE / RISK は登録日の JST 終日で失効（EXPIRED）。翌日・新月に一括配信しない。UNKNOWN 行の同一 retry_key 再試行は妨げない |
+| V07 | 制御操作（STOP/RESUME）は受信時刻とは別に**イベント時刻**を保存し、より新しい制御より前の遅着操作は状態を変えず監査だけ（`STOP_LATE` / `RESUME_LATE`、結果 IGNORED） |
+| V08（2）| `postback` / `message` がオブジェクトでないイベントは INVALID に畳み、同一バッチの後続イベントは処理を続ける |
+| V09 | 署名は ASCII 以外を 401（`compare_digest` に非 ASCII を渡さない） |
+| V13 | ホストに非 ASCII を含むリンク（IDN・全角）を拒否（ブラウザの ASCII 化で会員ホスト等に正規化され得るため） |
+| V10（2、B）| **採用**: STOP / RESUME もイベント時刻が受信時刻より未来なら INVALID（報告イベントと同じ規則）。「STOP は受信即時優先」の例外は採らない（未来時刻は時計ずれか改変であり、監査上の順序が壊れる。停止したい本人は正しい時刻の操作を再送すればよい） |
+
+### 2. 実測（ops/ で `python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q`、Claude 作業環境）
+
+| 区分 | 件数 | 結果 |
+|---|---|---|
+| 受領時 | 682 | 667 通過 / 15 失敗（V01×3・V02〜V07・V08×2・V09・V10×2・V13） |
+| 修正後 | 682 | 682 通過 |
+| Claude 回帰試験追加後（`ops/tests/test_v041_order4_review_claude.py` S01〜S11、14 ケース） | **696** | **696 通過。全件通過**。skip/xfail なし |
+
+Claude 所有試験の期待値更新は R04 の 1 点だけ（新月 flush の古い RISK 行を SENT → EXPIRED。V06 の採用に伴う）。削除・skip・xfail なし。
+
+S 系列: 送信例外→UNKNOWN→同一キーで再送成功（S01）、他プロセスの SENDING を猶予後に回復（S02）、2 ハンドル並行で実送信呼出が予算どおり 2 回（S03）、UNKNOWN→failure→success で予算 1・同一 retry_key（S04）、期限後・STOP 後も UNKNOWN 維持（S05）、日次通知の登録日失効と UNKNOWN 再試行の両立（S06）、UTC 引数の月境界と再起動（S07）、制御の順序と未来拒否・監査行（S08）、形崩れと署名変種（S09）、IDN・見た目そっくりホスト（S10）、ログ行全体のマスク（S11）。
+
+### 3. 契約の隙間（`common/ISSUES.md` に追記）
+
+- SENDING の猶予 10 分は本実装の定数で、実 LINE の応答時間に合わせて設定化が必要（仕様案 v0.2 に追記依頼）。
+- 制御操作の順序判定はイベント時刻（LINE の timestamp）基準。時計ずれの許容幅（未来判定）は現在 0 秒で、実運用では数秒の許容が必要になり得る。
+
+### 4. 変更ファイル
+
+`ops/aitrader_ops/notify.py`、`judges.py`、`__init__.py`（v0.4.1）、`ops/tests/test_v041_order4_review_claude.py`（新規 14）、`ops/tests/test_v040_order4_claude.py`（R04 の期待値）、`ops/README.md`、本記録、`common/ISSUES.md`（追記）、`Codex引き渡しプロンプト.md`（B と履歴）。
+
+## 第18回（2026-09-11 20:57 JST）— ops v0.4.1（Codex 単独継続分）の独立レビュー（Claude / Cowork）
+
+依頼元: ユーザー指示「Code でなく Cowork で進めて」（Claude 側の再開）。`build-codex/Claude引き渡しプロンプト.md` の B は
+2026-09-11 04:25 時点で「引き渡し不要・Codex 単独継続」だったため、B の再実行ではなく**最新 ops 成果の独立レビュー**として実施した。
+Claude は ops のコードを変更していない。追加したのは `ops/tests/test_v041_resume_review_claude.py`（11 件）のみ。
+共通受入テスト・Codex 試験・主系・共通仕様本文は無変更。skip / xfail / 条件緩和なし。
+
+### 実測（環境の制約を明記する）
+
+| 対象 | コマンド（ops/ で実行） | 結果 |
+|---|---|---|
+| 追加前（既存のみ・収集できた範囲） | `python -m pytest ../common/tests/phase2 tests -q`（下記 13 ファイルを除外） | **294 passed / 1 failed**（295） |
+| 追加後（本レビュー 11 件を含む） | 同上 | **300 passed / 6 failed**（306） |
+
+- **指定の全体コマンド `../common/tests/phase2 ../build-codex/tests tests` は実行できていない。** Cowork のデバイスブリッジが
+  Windows 側の不具合（2026-09-08 の更新）でシェルを持てず、ファイルを 1 本ずつ取り込む方式になったため、
+  `build-codex/aitrader`（`aitrader.packet`）を取得できなかった。`aitrader` に依存する **13 ファイル**（common 4・ops 9）は**収集していない**。
+  したがって Codex 報告の「2189 passed / 9 skipped」は**本レビューでは検証できていない**。数値を引き継がないこと。
+- 既存分の 1 failed は `common/tests/phase2/test_ops_rereview.py::test_r20`。原因は `aitrader` 未取得という**環境要因**であり、
+  実装の欠陥ではない。
+- 追加分の 5 failed はすべて本レビューの反例（W01 が 4 件、W02 が 1 件）。残り 6 件は通過＝今回の補強が保たれていることの確認。
+- 実行環境は Cowork のクラウド側（Linux, Python 3.11, pytest 9.1.1）。`ops/aitrader_ops/notify.py` は
+  取り込み時点（mtime 1789119696218）のもので、レビュー後に再取得して同一であることを確認した。
+
+### 新規指摘
+
+| ID | 内容 | 分類 |
+|---|---|---|
+| **W01** | **直接 `Notifier.stop()/resume()` に未来時刻の `event_at` を渡すと、その後の本物の STOP が遅着扱いで無視され、緊急停止が効かなくなる** | **A（安全性）** |
+| W02 | 同一候補・別 key・内容変更の `enqueue` が、完全重複と区別されずに黙って捨てられる | B（契約未定義） |
+
+#### W01（A）— 未来時刻の制御イベントが緊急停止を無効化する
+
+再現（`test_w01a`〜`test_w01d`）:
+
+1. `stop(now=T, event_at=T)` → STOPPED
+2. `resume(now=T+1h, reconciled_at=T+30m, event_at=T+1day)` → **RESUMED**（未来時刻が検査されない）
+3. `stop(now=T+2h, event_at=T+2h)`（本物の緊急停止） → **IGNORED**、`is_stopped()` は False のまま
+4. その状態で `flush()` すると **NEW 候補が SENT される**（`test_w01c` で確認）
+
+原因は `_latest_control_event_at()` が未来（T+1day）に進み、以後のすべての制御操作が `event_at < latest` = 遅着と判定されること。
+逆向き（未来時刻の STOP → 以後の正当な RESUME が IGNORED＝復帰不能）も同じ根で起きる（`test_w01b`）。
+
+**すでに他の 2 箇所では未来時刻を拒否している**ため、これは設計思想の抜けではなく実装の取りこぼしである。
+
+- webhook 経路 `notify._apply_event`: `if event_at > now: return INVALID`（V10 として採用済み。既存の `test_s08` が担保）
+- 読み取り経路 `stop_status._time()`: 未来の `at` / `event_at` を `ValueError` にする
+
+その結果、書き手と読み手が**同じ履歴について正反対の判断をする**（`test_w01d`）。
+実測では `inspect_stop_status()` が `STATE_DB_INVALID` → `status='UNKNOWN'` / `effective_stop=True`（＝止まっている扱い）を返す一方、
+同じ DB を持つ `Notifier.is_stopped()` は False を返して送信を続ける。管理表示は「不明」、実際の通知は「継続」という食い違いになる。
+
+修正方向（ops 側・契約変更なし）: `Notifier.stop()` / `Notifier.resume()` の入口で `event_at > now` を拒否する。
+webhook と読み手がすでに同じ規則を持っているため、**新しい契約ではなく既存契約の適用範囲の統一**として実装できる。
+遅着（`event_at < latest`）の扱いは現状のままでよい。
+
+#### W02（B）— 内容変更の再登録が完全重複と区別できない
+
+`enqueue(key='k2', kind='NEW', proposal_id='P1', message=訂正後)` は、`P1` に既存行（key='k1'）があると
+`{'key': 'k1', 'state': 'PENDING', 'duplicate': True}` を返し、**訂正後の本文は保存も配信もされない**。
+同じ key に異なる内容を入れた場合は `ValueError` になるのに、別 key + 同一候補では無言で捨てられる非対称がある。
+二重通知を防ぐ現契約は妥当なので、拒否ではなく**呼出側が区別できる応答**（例: `changed=True` を添える、または CONFLICT を返す）を提案する。
+仕様本文は変更していない。採否は Codex・ユーザー判断。
+
+### 通過を確認した補強（回帰 6 件）
+
+- `test_w03` webhook の未来時刻制御拒否（V10）は維持
+- `test_w04` `stop_status` が未来の制御履歴を UNKNOWN / `effective_stop=True` に倒す
+- `test_w05` 外部入力の内部属性（`_applied_proposal_id`）が TRADE payload に混入せず、`replay(at)` も壊れない
+- `test_w06` `FRACTIONAL_CASHOUT` が保有銘柄を要求する
+- `test_w07` `POLICY_UPGRADE` マーカーの二重付与を拒否
+- `test_w08` 成否不明行が初回の月枠を保持し、24 時間の再試行期限後は新規送信しない（`RETRY_EXPIRED` 警告あり）
+
+### 未再現・今回確認できなかったこと
+
+- `build-codex/tests`（主系 128 ファイル）と `aitrader` 依存の ops 9 ファイルは未収集。runner・provenance・backtest 側は本レビューの対象外。
+- 実プロセス同時書込、電源断、WAL 破損の耐久試験は未実施。
+- `_mask` は環境変数の値と完全一致する文字列だけを置換する。URL エンコード・base64 等の変形や、
+  文字列以外（bytes・数値）に埋め込まれた秘密値は素通りする。実害の再現はしていないため指摘としては未確定。
+- 月境界をまたぐ成否不明行の再試行は初回月の枠を使う（Codex の明示契約）。24 時間の再試行期限があるため
+  超過は境界前後 24 時間以内の件数に限られる。実測で無制限の超過は起きなかった。
+
+### Codex への再依頼（`Codex引き渡しプロンプト.md` B に反映済み）
+
+1. W01 の修正（`Notifier.stop()/resume()` で `event_at > now` を拒否）と、直接 API・webhook・`stop_status` の三経路が同じ時刻規則であることの回帰試験
+2. W02 の採否判断（応答で区別できるようにするか、現状維持とするか）と理由・影響の記載
+3. 指定の全体コマンドでの実測（Claude 側は環境制約で未実施）

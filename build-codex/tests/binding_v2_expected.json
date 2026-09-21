@@ -1,0 +1,172 @@
+{
+  "E1": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 0,
+    "matched_subject_count": 2,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 2,
+    "period_evidence_timed": true,
+    "period_series_count": 2,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [],
+    "required_subject_count": 2,
+    "selection_sha256": "e6f112d03807f3f9c806106890a95900a11680e150a037557c913b427db22bec",
+    "source_origin": "offline_fixture",
+    "status": "VERIFIED_OFFLINE_BINDING"
+  },
+  "E2": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 0,
+    "matched_subject_count": 0,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 0,
+    "period_evidence_timed": false,
+    "period_series_count": 0,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [
+      "DECISION_TIME_MISMATCH"
+    ],
+    "required_subject_count": 0,
+    "selection_sha256": null,
+    "source_origin": "offline_fixture",
+    "status": "DATA_INCOMPLETE"
+  },
+  "E3": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 0,
+    "matched_subject_count": 0,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 0,
+    "period_evidence_timed": false,
+    "period_series_count": 3,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [
+      "VALIDITY_NOT_SATISFIED"
+    ],
+    "required_subject_count": 2,
+    "selection_sha256": "e6f112d03807f3f9c806106890a95900a11680e150a037557c913b427db22bec",
+    "source_origin": "offline_fixture",
+    "status": "DATA_INCOMPLETE"
+  },
+  "E4": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 1,
+    "matched_subject_count": 2,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 3,
+    "period_evidence_timed": false,
+    "period_series_count": 3,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [
+      "EXTRA_SUBJECT_PRESENT"
+    ],
+    "required_subject_count": 2,
+    "selection_sha256": "e6f112d03807f3f9c806106890a95900a11680e150a037557c913b427db22bec",
+    "source_origin": "offline_fixture",
+    "status": "DATA_INCOMPLETE"
+  },
+  "E5": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 1,
+    "matched_subject_count": 0,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 0,
+    "period_evidence_timed": false,
+    "period_series_count": 4,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [
+      "EXTRA_SUBJECT_PRESENT",
+      "VALIDITY_NOT_SATISFIED"
+    ],
+    "required_subject_count": 2,
+    "selection_sha256": "e6f112d03807f3f9c806106890a95900a11680e150a037557c913b427db22bec",
+    "source_origin": "offline_fixture",
+    "status": "DATA_INCOMPLETE"
+  },
+  "E6": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 0,
+    "matched_subject_count": 1,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 1,
+    "period_evidence_timed": false,
+    "period_series_count": 1,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [
+      "HISTORY_SELECTION_MISSING"
+    ],
+    "required_subject_count": 2,
+    "selection_sha256": "194ecdf56e9e60537e656fb096454483e00ebeb9e9e15909edf1bbcae6b4be62",
+    "source_origin": "offline_fixture",
+    "status": "DATA_INCOMPLETE"
+  },
+  "E7": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 0,
+    "matched_subject_count": 1,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 2,
+    "period_evidence_timed": false,
+    "period_series_count": 2,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [
+      "ROW_HASH_MISMATCH"
+    ],
+    "required_subject_count": 2,
+    "selection_sha256": "3ec2332f1671ef0f9daa358faf33392fec4eb912ee96a68a79fd53fd56ece5d9",
+    "source_origin": "offline_fixture",
+    "status": "DATA_INCOMPLETE"
+  },
+  "E8": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 0,
+    "matched_subject_count": 1,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 1,
+    "period_evidence_timed": false,
+    "period_series_count": 2,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [
+      "VALIDITY_NOT_SATISFIED"
+    ],
+    "required_subject_count": 2,
+    "selection_sha256": "e6f112d03807f3f9c806106890a95900a11680e150a037557c913b427db22bec",
+    "source_origin": "offline_fixture",
+    "status": "DATA_INCOMPLETE"
+  },
+  "E9": {
+    "corrected_after_as_of_count": 0,
+    "current_signal": false,
+    "extra_subject_count": 0,
+    "matched_subject_count": 0,
+    "mode": "history_validity_binding_fixture_v2",
+    "period_candidate_count": 0,
+    "period_evidence_timed": false,
+    "period_series_count": 0,
+    "read_only": true,
+    "ready_for_live": false,
+    "reason_codes": [
+      "DECISION_TIME_MISMATCH"
+    ],
+    "required_subject_count": 0,
+    "selection_sha256": null,
+    "source_origin": "offline_fixture",
+    "status": "DATA_INCOMPLETE"
+  }
+}

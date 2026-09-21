@@ -1,11 +1,35 @@
 import argparse
 import json
 import sys
+import os
+import stat
 from datetime import date
 from pathlib import Path
 from .api import init_db,load_synthetic,run_signals,run_backtest
 from .db import default_home
 from .report import render
+
+def _validate_export_path(output, name=None):
+    """Check the raw CLI export path before resolve can hide a link."""
+    output = Path(output).absolute()
+    folder = output if name is None else output/name
+    targets = [(part, True) for part in reversed((folder, *folder.parents))]
+    if name is not None:
+        targets.extend((folder/filename, False) for filename in ('summary.json', 'report.html'))
+    for target, directory in targets:
+        try:
+            info = target.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            raise ValueError('結果の出力先を安全に確認できません') from None
+        unsafe = (stat.S_ISLNK(info.st_mode)
+                  or (hasattr(os.path, 'isjunction') and os.path.isjunction(target))
+                  or bool(getattr(info, 'st_file_attributes', 0) & 0x400))
+        valid = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
+        if unsafe or not valid:
+            raise ValueError('結果の出力先を安全に確認できません')
+    return output
 
 def main():
     parser = argparse.ArgumentParser(description='Research only: no live signals or orders')
@@ -40,16 +64,16 @@ def main():
         print(json.dumps(proposals,ensure_ascii=False,default=lambda value:value.isoformat(),allow_nan=False))
     elif a.command=='backtest':
         # Full ledgers live outside the shared source tree; only summaries are copied.
-        import shutil
+        from .backtest_exports import export_summary_report
         source_root = Path(__file__).resolve().parents[2]
-        output = a.out.resolve()
+        output = _validate_export_path(a.out)
+        output = output.resolve()
         runtime = home/'results' if output.is_relative_to(source_root) else output
         summary = run_backtest(home,a.strategy,a.start,a.end,runtime)
         if runtime.resolve()!=output:
             name = f'{a.strategy}_{summary["version"]}'
-            (output/name).mkdir(parents=True,exist_ok=True)
-            for file in ('summary.json','report.html'):
-                shutil.copy2(runtime/name/file,output/name/file)
+            _validate_export_path(output, name)
+            export_summary_report(runtime/name, output/name)
         print(json.dumps(summary,ensure_ascii=False))
     elif a.command=='report': render(a.results)
     elif a.command=='fetch':

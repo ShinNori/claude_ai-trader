@@ -1,0 +1,15 @@
+{
+  "mode": "watch",
+  "agent": "claude",
+  "channels": {
+    "auto": {
+      "status": "blocked",
+      "at": "2026-09-11T03:23:36.202878+09:00"
+    }
+  },
+  "blocked": "blocked",
+  "interval": 60,
+  "phase": "observed",
+  "written_at": "2026-09-11T03:23:36.202878+09:00",
+  "pid": 20508
+}

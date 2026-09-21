@@ -5,7 +5,7 @@ from .limits import Limits
 from .models import (Proposal, Verdict, PositionIn, OpenOrderIn, TradeEvent, CsvFill, Position,
                      ReportResult, ImportResult, LedgerView, compute_packet_hash, reserve_amount)
 
-__version__ = "0.3.6"
+__version__ = "0.4.1"
 __all__ = ["GateResult", "evaluate", "Ledger", "LedgerError", "LedgerNotInitialized", "Limits", "Proposal",
            "Verdict", "PositionIn", "OpenOrderIn", "TradeEvent", "CsvFill", "Position", "ReportResult",
            "ImportResult", "LedgerView", "compute_packet_hash", "reserve_amount"]

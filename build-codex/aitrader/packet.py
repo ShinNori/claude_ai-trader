@@ -185,7 +185,7 @@ def render_packet(p: Proposal, market_context: dict) -> str:
             if any(str(k).lower() in forbidden for k in value):
                 raise ValueError('他AIの結論を判定パケットに含めることはできません')
             for v in value.values(): check(v)
-        elif isinstance(value, list):
+        elif isinstance(value, (list, tuple)):
             for v in value: check(v)
     check(market_context)
     ref = _json(market_context).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')

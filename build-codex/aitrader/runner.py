@@ -3,22 +3,86 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sqlite3
+import stat
+import tempfile
 from dataclasses import asdict, dataclass, is_dataclass, replace
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from pathlib import Path
 
 from aitrader_ops.gate import evaluate
+from aitrader_ops.judges import redact_log
 from aitrader_ops.ledger import Ledger
 from aitrader_ops.limits import Limits
 from aitrader_ops.models import JST, Proposal, Verdict, compute_packet_hash
-from .db import connect
+from .db import _runtime_path_guard, connect
 
 
 class RunError(ValueError):
     pass
+
+
+def _run_output_guard(folder):
+    """Reject unsafe known run outputs before opening or mutating the journal."""
+    folder = Path(folder).absolute()
+    outputs = ('manifest.json', 'proposals.json', 'verdicts.json',
+               'gate_results.json', 'result.json', 'failure.json')
+    paths = [(parent, True) for parent in reversed((folder, *folder.parents))]
+    paths.extend((folder/name, False) for name in outputs)
+    for path, directory in paths:
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError:
+            raise RunError('模擬実行の成果物保存先を安全に確認できません') from None
+        unsafe = (stat.S_ISLNK(info.st_mode)
+                  or (hasattr(os.path, 'isjunction') and os.path.isjunction(path))
+                  or bool(getattr(info, 'st_file_attributes', 0)
+                          & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)))
+        valid = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
+        if unsafe or not valid:
+            raise RunError('模擬実行の成果物保存先を安全に確認できません')
+
+
+def _runner_home_guard(home, *, extra_files=()):
+    """Validate raw runner paths before any read, create, or DB connection."""
+    try:
+        home = _runtime_path_guard(home)
+    except (TypeError, ValueError, OSError):
+        raise RunError('模擬実行先を安全に確認できません') from None
+
+    def observe(path, directory=False):
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            return False
+        except OSError:
+            raise RunError('模擬実行先を安全に確認できません') from None
+        unsafe = (stat.S_ISLNK(info.st_mode)
+                  or (hasattr(os.path, 'isjunction') and os.path.isjunction(path))
+                  or bool(getattr(info, 'st_file_attributes', 0)
+                          & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)))
+        valid = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
+        if unsafe or not valid:
+            raise RunError('模擬実行先を安全に確認できません')
+        return True
+
+    if (not isinstance(extra_files, tuple)
+            or any(not isinstance(name, str) or not name or Path(name).name != name
+                   for name in extra_files)):
+        raise RunError('模擬実行先を安全に確認できません')
+    sqlite_names = ('ledger.sqlite', 'orchestration.sqlite', 'runner-lock.sqlite')
+    for name in (('mock-runner.json', *sqlite_names) + extra_files):
+        observe(home / name)
+    for name in sqlite_names + tuple(name for name in extra_files if name.endswith('.sqlite')):
+        for suffix in ('-wal', '-shm', '-journal'):
+            observe(home / (name + suffix))
+    observe(home / 'runs', directory=True)
+    return home
 
 
 def plain(value):
@@ -41,12 +105,41 @@ def digest(value):
     return hashlib.sha256(encoded(value).encode('utf-8')).hexdigest()
 
 
-def write_json(path, value):
-    path = Path(path)
+def write_json(path, value, *, redact=True):
+    if type(redact) is not bool:
+        raise RunError('redactはboolで指定してください')
+    path = Path(path).absolute()
+    body = encoded(redact_log(plain(value)) if redact else plain(value)).encode('utf-8')
+
+    def reject_unsafe(item, *, directory=False):
+        try:
+            info = item.lstat()
+        except FileNotFoundError:
+            return False
+        is_reparse = (item.is_symlink()
+                      or (hasattr(os.path, 'isjunction') and os.path.isjunction(item))
+                      or bool(getattr(info, 'st_file_attributes', 0)
+                              & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)))
+        expected = stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode)
+        if is_reparse or not expected:
+            raise RunError('JSON保存先を安全に確認できません')
+        return True
+
+    absolute_parent = path.parent
+    for parent in reversed((absolute_parent, *absolute_parent.parents)):
+        reject_unsafe(parent, directory=True)
+    reject_unsafe(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix('.json.tmp')
-    temporary.write_text(encoded(value), encoding='utf-8')
-    temporary.replace(path)
+    for parent in reversed((absolute_parent, *absolute_parent.parents)):
+        if not reject_unsafe(parent, directory=True):
+            raise RunError('JSON保存先を安全に確認できません')
+    reject_unsafe(path)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix='.'+path.name+'.', suffix='.tmp', dir=path.parent)
+    temporary = Path(temporary_name)
+    with os.fdopen(descriptor, 'wb') as stream:
+        stream.write(body)
+    os.replace(temporary, path)
 
 
 def aware(value):
@@ -100,10 +193,9 @@ class Valuation:
 
 def initialize_mock(home, cash, positions, at):
     """Explicitly create a fresh simulation ledger; never adopt an existing ledger."""
-    home = Path(home).resolve()
-    if any('dropbox' in part.lower() for part in home.parts):
-        raise RunError('模擬実行先はDropbox外にしてください')
+    home = _runner_home_guard(home)
     home.mkdir(parents=True, exist_ok=True)
+    home = _runner_home_guard(home)
     if (home/'ledger.sqlite').exists():
         raise RunError('既存台帳を模擬台帳として初期化できません')
     ledger = Ledger(home/'ledger.sqlite')
@@ -122,6 +214,54 @@ def mock_verdicts(proposals, run_id, received_at, decisions=None):
                             for j in ('claude', 'codex')] for p in proposals}
 
 
+def _prior_candidate(journal, proposal, run_id, execution_day):
+    prior = journal.execute(
+        'SELECT hash,state,result,owner,day,side FROM candidates WHERE pid=?',
+        [proposal.proposal_id]).fetchone()
+    if prior is None:
+        return None
+    if prior[0] != digest(proposal):
+        raise RunError('既存候補の内容が変わっています')
+    if prior[3] != run_id:
+        raise RunError('別runの候補を再利用できません')
+    if prior[4] != execution_day.isoformat() or prior[5] != proposal.side:
+        raise RunError('既存候補の執行日または売買方向が一致しません')
+    if prior[1] not in ('INTENT', 'APPROVED', 'REJECTED'):
+        raise RunError('既存候補の状態を確認できません')
+    try:
+        item = json.loads(prior[2])
+        gate = item['gate']
+        expected_status = 'REJECTED' if prior[1] == 'REJECTED' else 'APPROVED'
+        valid = (isinstance(item, dict)
+                 and item.get('proposal_id') == proposal.proposal_id
+                 and item.get('status') == expected_status
+                 and isinstance(gate, dict)
+                 and type(gate.get('allowed')) is bool
+                 and isinstance(gate.get('reason_codes'), list)
+                 and all(isinstance(code, str) for code in gate['reason_codes'])
+                 and ((item['status'] == 'APPROVED') == gate['allowed']))
+    except (TypeError, ValueError, KeyError):
+        valid = False
+    if not valid:
+        raise RunError('既存候補の判定原本を確認できません')
+    body = None
+    if prior[1] == 'APPROVED':
+        key = f'{execution_day}:{proposal.proposal_id}:{proposal.packet_hash}:CANDIDATE'
+        row = journal.execute('SELECT body FROM outbox WHERE key=?', [key]).fetchone()
+        try:
+            body = json.loads(row[0]) if row else None
+            body_proposal = normalize_proposal(body['proposal'])
+            valid_body = (body.get('key') == key and body.get('mode') == 'mock'
+                          and body.get('delivery') == 'NOT_SENT'
+                          and body.get('kind') == 'CANDIDATE'
+                          and digest(body_proposal) == digest(proposal))
+        except (TypeError, ValueError, KeyError, AttributeError):
+            valid_body = False
+        if not valid_body:
+            raise RunError('承認済み候補のoutbox原本を確認できません')
+    return prior[1], item, body
+
+
 def _calendar(home, day, proposals):
     if not (home/'market.duckdb').exists():
         raise RunError('市場DBがありません')
@@ -134,7 +274,11 @@ def _calendar(home, day, proposals):
         raise RunError('執行日が確認済み営業日ではありません')
     if len({p.as_of for p in proposals}) > 1:
         raise RunError('候補の基準日が揃っていません')
+    marks = dict(price_rows)
     for p in proposals:
+        mark = Decimal(str(marks.get(p.code, 'NaN')))
+        if not mark.is_finite() or mark <= 0:
+            raise RunError(f'{p.code} の基準日当日の評価価格がありません')
         if p.expires_at != datetime.combine(day, time(8, 59), JST):
             raise RunError('候補の注文期限が本日08:59ではありません')
         points = [p.as_of, day]
@@ -146,7 +290,7 @@ def _calendar(home, day, proposals):
             raise RunError('営業日カレンダーに未確認の日があります')
         if not calendar.get(p.as_of) or any(calendar[d] for d in calendar if p.as_of < d < day):
             raise RunError('候補の基準日が前営業日ではありません')
-    return [d for d, business in rows if business], dict(price_rows), rows
+    return [d for d, business in rows if business], marks, rows
 
 
 def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
@@ -156,15 +300,15 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
     A completed run is immutable. Resume can finish a saved INTENT only when no
     ledger notice exists; an uncertain cross-DB write stops for reconciliation.
     """
-    home = Path(home).resolve()
+    home = _runner_home_guard(home)
     if not re.fullmatch(r'[A-Za-z0-9_-]{1,80}', run_id):
         raise RunError('run_idが不正です')
-    if any('dropbox' in part.lower() for part in home.parts):
-        raise RunError('実行先はDropbox外にしてください')
     if not (home/'mock-runner.json').exists() or not (home/'ledger.sqlite').exists():
         raise RunError('initialize_mockで作った専用台帳が必要です')
     if json.loads((home/'mock-runner.json').read_text(encoding='utf-8')).get('mode') != 'mock':
         raise RunError('模擬モード以外は実装していません')
+    from .managed_stop import managed_stop_policy, inspect_managed_stop
+    policy = managed_stop_policy(home)
     now = aware(now)
     if now.date() != execution_day:
         raise RunError('実行日時と執行日が一致しません')
@@ -174,14 +318,31 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
     limits = limits or Limits()
     request = dict(proposals=ps, verdicts=verdicts, valuation=valuation,
                    limits=limits, execution_day=execution_day, unresolved=unresolved_unconfirmed)
+    if policy is not None:
+        request['managed_stop_policy'] = {
+            key: ([str(v) for v in value] if isinstance(value, tuple) else
+                  str(value) if isinstance(value, Path) else value)
+            for key, value in policy.items()}
     request_hash = digest(request)
     run_dir = home/'runs'/execution_day.isoformat()/run_id
+    _run_output_guard(run_dir)
     # Separate lock DB keeps the process lock while durable journal entries commit.
     lock = sqlite3.connect(home/'runner-lock.sqlite', isolation_level=None, timeout=5)
-    journal = sqlite3.connect(home/'orchestration.sqlite', isolation_level=None)
+    try:
+        journal = sqlite3.connect(home/'orchestration.sqlite', isolation_level=None)
+    except BaseException:
+        try:
+            lock.close()
+        except Exception:
+            pass
+        raise
     ledger = None
     try:
         lock.execute('BEGIN IMMEDIATE')
+        _runner_home_guard(home)
+        _run_output_guard(run_dir)
+        if managed_stop_policy(home) != policy:
+            raise RunError('ロック取得中に停止管理の設定が変わりました')
         journal.executescript('''
             CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY, hash TEXT, manifest TEXT, result TEXT);
             CREATE TABLE IF NOT EXISTS candidates(pid TEXT PRIMARY KEY, hash TEXT, day TEXT,
@@ -203,6 +364,12 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
                         execution_day=execution_day.isoformat(), started_at=now.isoformat(),
                         request_hash=request_hash, calendar_hash=digest(calendar), marks=marks,
                         valuation=plain(valuation), initial_ledger_seq=ledger.seq())
+        if policy is not None:
+            manifest['managed_stop_policy'] = plain(request['managed_stop_policy'])
+        manifest['saved_artifact_hashes'] = {
+            'proposals': digest(redact_log(plain(ps))),
+            'verdicts': digest(redact_log(plain(verdicts))),
+        }
         if saved:
             old = json.loads(saved[1])
             if old['calendar_hash'] != manifest['calendar_hash'] or old['marks'] != plain(marks):
@@ -216,21 +383,14 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
             raise RunError('審査開始は07:00以降です')
         results, outbox = [], []
         for p in ps:
-            prior = journal.execute('SELECT hash,state,result,owner FROM candidates WHERE pid=?', [p.proposal_id]).fetchone()
+            prior = _prior_candidate(journal, p, run_id, execution_day)
             if prior:
-                if prior[0] != digest(p):
-                    raise RunError('既存候補の内容が変わっています')
-                if prior[1] != 'INTENT':
-                    results.append(json.loads(prior[2]))
-                    if prior[1] == 'APPROVED':
-                        key = f'{execution_day}:{p.proposal_id}:{p.packet_hash}:CANDIDATE'
-                        row = journal.execute('SELECT body FROM outbox WHERE key=?', [key]).fetchone()
-                        if not row:
-                            raise RunError('承認済み候補のoutboxがありません')
-                        outbox.append(json.loads(row[0]))
+                state, prior_result, prior_body = prior
+                if state != 'INTENT':
+                    results.append(prior_result)
+                    if prior_body is not None:
+                        outbox.append(prior_body)
                     continue
-                if prior[3] != run_id:
-                    raise RunError('別runの途中処理が残っています')
             try:
                 ledger.notice(p.proposal_id)
             except KeyError:
@@ -260,12 +420,18 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
             slots = journal.execute("SELECT count(*) FROM candidates WHERE day=? AND side='BUY' AND state IN ('INTENT','APPROVED') AND pid<>?",
                                     [execution_day.isoformat(), p.proposal_id]).fetchone()[0]
             incomplete = now >= deadline or len(received) < 2
+            observations = []
+            if policy is not None:
+                observations.append(inspect_managed_stop(home, now=now))
+            stopped = observations[-1]['effective_stop'] if observations else (home/'STOP').exists()
             result = evaluate(p, received, now, view, limits, values['equity'],
                               values['equity'], 0,
-                              (home/'STOP').exists(),
+                              stopped,
                               unresolved_unconfirmed or bool(ledger.unconfirmed(now)) or bool(ledger.pending_rows()),
                               business_days=business_days)
             extra = []
+            if p.side == 'BUY' and observations and not observations[-1]['known']:
+                extra.append('STOP_STATE_UNKNOWN')
             if incomplete:
                 extra.append('REVIEW_INCOMPLETE')
             if invalid:
@@ -279,8 +445,19 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
             if extra:
                 result.allowed = False
                 result.reason_codes.extend(extra)
+            # Managed controls share this lock; direct external writers do not.
+            if result.allowed and p.side == 'BUY' and policy is not None:
+                observations.append(inspect_managed_stop(home, now=now))
+                latest = observations[-1]
+                if latest['effective_stop']:
+                    result.allowed = False
+                    result.reason_codes.append('STOP_NEW')
+                    if not latest['known']:
+                        result.reason_codes.append('STOP_STATE_UNKNOWN')
             item = dict(proposal_id=p.proposal_id, status='APPROVED' if result.allowed else 'REJECTED',
                         gate=plain(result), valuation=values, ledger_seq=ledger.seq())
+            if policy is not None:
+                item['stop_observations'] = observations
             if result.allowed:
                 journal.execute('INSERT OR REPLACE INTO candidates VALUES(?,?,?,?,?,?,?)',
                                 [p.proposal_id, digest(p), execution_day.isoformat(), p.side, 'INTENT', encoded(item), run_id])
@@ -295,8 +472,11 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
                     journal.execute('INSERT INTO outbox VALUES(?,?)', [body['key'], encoded(body)])
                     journal.execute("UPDATE candidates SET state='APPROVED',result=? WHERE pid=?", [encoded(item), p.proposal_id])
                     journal.execute('COMMIT')
-                except Exception:
-                    journal.execute('ROLLBACK')
+                except BaseException:
+                    try:
+                        journal.execute('ROLLBACK')
+                    except BaseException:
+                        pass
                     raise
                 outbox.append(body)
             else:
@@ -322,12 +502,18 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
                                               message='模擬処理を停止しました。照合が必要です。', detail=str(exc)))
         raise
     finally:
-        if ledger:
-            ledger.close()
-        journal.close()
-        if lock.in_transaction:
-            lock.execute('ROLLBACK')
-        lock.close()
+        try:
+            if ledger:
+                ledger.close()
+        finally:
+            try:
+                journal.close()
+            finally:
+                try:
+                    if lock.in_transaction:
+                        lock.execute('ROLLBACK')
+                finally:
+                    lock.close()
 
 
 def _artifacts(folder, manifest, request, result):

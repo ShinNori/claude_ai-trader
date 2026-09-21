@@ -1,6 +1,13 @@
-# ピンポン方式（Claude Code ⇄ Codex 自動引き渡し）
+# Claude Code ⇄ Codex 自動引き渡し（監視方式 v2 ／ ピンポン方式）【廃止・経緯記録】
 
-作成: 2026-09-09 06:10 JST（Claude / Cowork）
+> **2026-09-09 07:40 JST 採用決定（Claude）**: 自動連携の正規実装は **`tools/automation/`（Codex 版 Python エンジン＋PS5.1 入口）** に一本化し、
+> Claude が **dev チャネル**（投資本体の開発ループ）を追加した。本書で説明していた `tools/watch_handoff.ps1`・`pingpong.ps1`・起動 cmd・タスク登録は
+> `tools/_deprecated/` へ移して廃止。以降の使い方は `tools/automation/README.md`、採否と H01〜H18 の反映状況は `tools/automation/CLAUDE_REVIEW.md`。
+> 本書はそれまでの設計経緯の記録として残す。
+
+
+作成: 2026-09-09 06:10 JST（Claude / Cowork）。v2: 07:40 JST — Codex レビュー `build-codex/PINGPONG_REVIEW.md`（H01〜H18）を監視方式に反映。
+**現在の推奨は監視方式 v2（tools/watch_handoff.ps1）のみ。ピンポン方式（tools/pingpong.ps1）はレビューで A 判定が多く、無人運用には使わない（手動の 1 往復検証用に残す）。**
 
 ## 何をするか
 
@@ -96,12 +103,24 @@ powershell -ExecutionPolicy Bypass -File tools\pingpong.ps1 -DryRun            #
 利点は、Claude 側を **Cowork（クラウドの Claude）が担当できる**こと。Cowork が依頼ファイルを書いて保存すれば、PC の Codex 見張りが 1 分以内に拾い、
 結果は Claude 宛てファイルに返る。設計相談と実装を同じセッションで続けられる。
 
-### 起動条件（6 つすべて）
+### v2 の安全策（Codex レビュー H02〜H17 への対応）
 
-B のハッシュが前回処理分と違う／更新から `-StableSec`（既定 60 秒）以上経過（書きかけ・Dropbox 同期中を拾わない）／
-「引き渡し不要」でない／自分側の QUESTIONS.md が依頼より新しくない（人間の回答待ちでない）／当日の起動回数が `-MaxRunsPerDay`（既定 10）未満／ロックなし。
-起動前にハッシュを処理済みとして `logs/watch/state_<channel>_<agent>.json` に記録するので、同じ依頼で二度は動かない。
-両側に見張りを置くとピンポンのようなラウンド上限がないため、**1 日の起動回数上限が唯一のブレーキ**になる。まず 5〜10 で運用する。
+| 項目 | v2 の動作 |
+|---|---|
+| 実行時ファイル | state / lock / HALT / ログは **Dropbox 外** `%AI_TRADER_HOME%\handoff\`（既定 `%USERPROFILE%\.ai-trader\handoff\`）。共有フォルダには `tools/pingpong_history.md` の要約行だけ |
+| 排他 | プロジェクト共通ロック `handoff.lock` を FileMode.CreateNew で原子的に取得し作業中は保持。取得後に依頼を読み直して不変を確認。クラッシュで残ったロックは人間が削除 |
+| 依頼の読み取り | 「## B. 今回の依頼」または「## 今回の依頼」から次の見出し（#〜######）/`---` まで。コードフェンス内の見出しは無視。「今回の依頼:」行は **1 物理行・1 件・非空** でなければ起動しない（「保留中の依頼」のような ### 節は依頼に含めない） |
+| 書きかけ対策 | 同じ内容を `-StableSec` 以上の間隔で 2 回観測し、かつ mtime も古いときだけ起動 |
+| 処理済み | hash の履歴（直近 200 件）。A→B→A の再実行も抑止。失敗（timeout / 異常終了 / 引き渡しなし）は処理済みにせず **HALT**（`HALT_<agent>.txt`）。人間が確認して削除するまで起動しない |
+| 質問待ち | 自分側の QUESTIONS.md が存在し「回答済」を含まない間は起動しない（時刻比較はしない） |
+| 上限 | 当日 `-MaxRunsPerDay`（既定 10）に加え、チャネル累計 `-MaxRunsTotal`（既定 20）。到達後は `-ResetCounters` するまで再開しない |
+| CLI 起動 | `codex -a never exec --sandbox workspace-write … -`（承認待ちで止まらず失敗として返す）。実行ファイルは絶対パス解決、モデル名は英数字 `. _ -` のみ。タイムアウトは `taskkill /T` でプロセスツリーごと停止 |
+| 完了判定 | 先頭行が「引き渡し不要」で **始まる** 場合のみ |
+| DryRun | 読取・表示のみ。state / lock / ログを書かず 1 回で終了 |
+| 廃止 | 通知フック（`PINGPONG_NOTIFY_CMD`）と git 自動 commit。スナップショットは人間が取る |
+| 終了コード（-Once） | 0 = 起動なし/成功、2 = 質問待ち、3 = HALT/異常、4 = 引き渡しなし |
+
+`-Status` で HALT・上限・処理済みの状態を表示できる。
 
 | 引数 | 既定 | 意味 |
 |---|---|---|
@@ -110,14 +129,16 @@ B のハッシュが前回処理分と違う／更新から `-StableSec`（既�
 | `-IntervalSec` | 60 | 確認間隔 |
 | `-StableSec` | 60 | 更新からこの秒数が経つまで起動しない |
 | `-MaxRunsPerDay` | 10 | 当日の起動回数上限（チャネル別、JST 日付） |
-| `-Once` | off | 1 回確認して終了 |
-| その他 | | `-TurnTimeoutMin` `-CodexModel` `-ClaudeModel` `-ClaudeSkipPermissions` `-NoGit` `-DryRun` はピンポンと同じ |
+| `-MaxRunsTotal` | 20 | チャネル累計の起動上限。`-ResetCounters` で 0 に戻す |
+| `-Once` | off | 1 回確認して終了（終了コードで結果を返す） |
+| `-Status` / `-ResetCounters` | | 状態表示 / 累計カウンタのリセット |
+| その他 | | `-TurnTimeoutMin` `-CodexModel` `-ClaudeModel` `-ClaudeSkipPermissions` `-DryRun` |
 
-ログは `logs/watch/`、履歴は同じ `tools/pingpong_history.md`（チャネル欄つき）。
+ログは `%USERPROFILE%\.ai-trader\handoff\logs\`、履歴は `tools/pingpong_history.md`（チャネル欄つき）。
 
 ## 初回の試し方
 
-1. `tools\start_watch_codex.cmd -DryRun` で、両チャネルの起動判定と一文が意図どおりか確認（DryRun でも処理済みハッシュは記録されるので、本番前に `logs\watch\state_*.json` を削除）
-2. `tools\start_watch_codex.cmd` で常駐。1 分以内に更新済みの依頼を拾って Codex が動く。`tools\pingpong_history.md` と `logs\watch\` を確認
+1. `tools\start_watch_codex.cmd -DryRun` で、両チャネルの起動判定と一文が意図どおりか確認（v2 の DryRun は副作用なし）
+2. `tools\start_watch_codex.cmd` で常駐。新しい依頼は検知から `-StableSec` 後に起動する。`-Status`、`tools\pingpong_history.md`、`%USERPROFILE%\.ai-trader\handoff\` を確認
 3. 安定したら `register_watch_task.ps1` でログオン時自動起動に切り替える
-4. ピンポン方式を使う場合は `-DryRun` → `-MaxRounds 1` → `-MaxRounds 3` の順
+4. HALT したら `HALT_codex.txt` の理由とログを確認し、直してからファイルを削除する。ピンポン方式は無人運用に使わない

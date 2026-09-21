@@ -1,0 +1,78 @@
+{
+  "mode": "strict_input_v1",
+  "source_origin": "offline_fixture",
+  "as_of": "2026-09-12T06:50:00+09:00",
+  "expected_codes": [
+    "0001"
+  ],
+  "source_documents": [
+    {
+      "id": "artificial-example",
+      "sha256": "8d022ef55a1fa924c642b7b3d60a38d23f7d16da59400d2ea3f32bb48e992984",
+      "payload": {
+        "prices": {
+          "0001": {
+            "code": "0001",
+            "price_at": "2026-09-11T15:30:00+09:00",
+            "selected_basis": "RAW",
+            "raw": {
+              "open": 100,
+              "high": 110,
+              "low": 90,
+              "close": 105,
+              "volume": 1000
+            },
+            "adjusted": null,
+            "adjustment_contract": null
+          }
+        },
+        "publications": {
+          "0001": {
+            "code": "0001",
+            "publication_at": "2026-09-11T16:30:00+09:00",
+            "estimated": false
+          }
+        },
+        "lots": {
+          "0001": {
+            "code": "0001",
+            "lot_size": 100
+          }
+        },
+        "events": {
+          "0001": {
+            "code": "0001",
+            "next_earnings_at": null,
+            "margin_regulated": false
+          }
+        }
+      }
+    }
+  ],
+  "sources": {
+    "prices": {
+      "0001": {
+        "document_id": "artificial-example",
+        "pointer": "/prices/0001"
+      }
+    },
+    "publications": {
+      "0001": {
+        "document_id": "artificial-example",
+        "pointer": "/publications/0001"
+      }
+    },
+    "lots": {
+      "0001": {
+        "document_id": "artificial-example",
+        "pointer": "/lots/0001"
+      }
+    },
+    "events": {
+      "0001": {
+        "document_id": "artificial-example",
+        "pointer": "/events/0001"
+      }
+    }
+  }
+}

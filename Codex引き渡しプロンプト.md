@@ -1,5 +1,12 @@
 # Codex 引き渡しプロンプト（毎回これをコピーして使う）
 
+## 最新方針：担当分離・トークン節約（2026-09-16）
+
+ユーザーの新指示により、[担当分担とモデル選択](build-codex/TEAM_WORKFLOW.md)を優先する。Codexは製品実装・修正・統合試験、Claudeは未決契約と独立境界試験・重要差分確認を担当。同一作業の二重実施・全件レビュー往復を止める。通常モデルを基本に難所だけ上位へ切替。サブエージェントは原則0、必要な独立作業だけ起動し、以前の「毎回最大3体」「Astra/Opus固定」より優先する。自動送信・起動・見張り再開は許可されていない。詳細は上記文書を参照し、以下の旧担当/モデル/並列方針との衝突は本節を優先。
+
+
+> 2026-09-11 04:25 JST ユーザー指示：ここからはCodex単独で開発を継続する。AGENTS.md冒頭の最新方針が旧A/Bの担当分担・Claudeへの公開要件に優先する。Claude待ちにせず、必要なops修正もCodexが行い、自己検証と独立レビューを区別する。売買の二重承認契約は変更しない。残作業は build-codex/OPS_V041_RESUME.md。Claudeへの引き渡しはユーザーの連携再開指示まで不要。
+
 作業フォルダ（Codex をここで開く。AGENTS.md を自動で読むため必須）:
 `D:\Desktop\Ace-1_Dropbox\Ace-1 Dropbox\Norimitsu Shin\!!!※則光用\999_投資関係\ai-trader`
 
@@ -14,7 +21,7 @@ Codex を上のフォルダで開き、**次の一文だけ**を貼る（A・B �
 1. Codex が終わったら、`build-codex/README.md` 末尾と `build-codex/QUESTIONS.md`（あれば）を Claude に見せる
 2. Claude・Codex とも、作業報告の末尾は下の「報告の末尾」テンプレートに従う
 3. Claude Code 経由で自動実行する場合は、ai-trader フォルダで Claude Code を開いて「Codex に今回の依頼を渡して、結果を要約して」と言えば `tools/run_codex_build.ps1` がこのファイルを読ませる
-4. 自動化する場合（`tools/PINGPONG.md`）: 監視方式 `powershell -ExecutionPolicy Bypass -File tools\watch_handoff.ps1 -Agent codex` を PC で常駐させると、この B が更新されるたびに 1 分以内に Codex が起動する。両側を PC で回すなら `tools\pingpong.ps1`
+4. 自動化する場合（`tools/automation/README.md`）: PC で `powershell -NoProfile -ExecutionPolicy Bypass -File tools\automation\watch_handoff.ps1 -Agent codex` を常駐させると、この B が **公開**（`codex_engine.py publish --channel dev --agent codex`）されるたびに Codex が起動する。Claude 側は Cowork が担当（PC に Claude CLI なし）
 
 ## 報告の末尾（Claude・Codex 共通テンプレート。2026-09-08 22:20 統一）
 
@@ -60,39 +67,38 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 完了したら build-codex/README.md の末尾に「今回やったこと・テスト件数と結果・Claude に伝えたい点」を追記する。
 ```
 
-## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-09 第10回）
+## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-20 09:11 第14回）
 
-**発行時刻: 2026-09-09 06:20 JST（前回 Codex 完了: 06:03 JST。第10回は Claude が ops v0.3.6 を実装）**
-※ 自動連携（watch_handoff.ps1 / pingpong.ps1 のレビュー）は開発ループと**別枠** `tools/自動連携_Codex依頼.md` に移した（06:55）。
-　その作業中・完了時も、この B は変更しない。
+**発行時刻: 2026-09-20 09:11 JST（Claude / Claude Code。保存のみ・未公開。handoff-ready マーカーは付けない）**
+※ 自動連携は別枠（tools/automation/、auto チャネル）。この B には混ぜない。
+※ 未公開の理由: D13 の担当をデスクトップ側の Codex セッションに一本化したため（QUESTIONS.md 22:34 の解決を参照）。見張り経由とデスクトップの同時実行を避ける。
 
 ```
-今回の依頼: ops v0.3.6（L02 修正・L03 入力拒否採用。Claude 実装）に合わせた Codex 所有試験 2 件の期待値更新と、
-test_migration.py の接続 close 統一、v0.3.6 の独立レビュー
+今回の依頼: 第14回 put/verify 独立確認の受領、R14-01（多重並行 put の WRITE_FAILED と偽の RECORD_CORRUPT）の採否・修正、契約末尾の採否 2 節の一本化
 
-前提: ops/ での実測は 388 件中 386 通過（skip/xfail なし）。残る 2 失敗は L03 で「解決の業務時刻は保留行の業務時刻以後」を
-採用したことと衝突する Codex 所有試験（テスト前提の誤り）。詳細は ops/Claude対応結果.md 第10回・common/ISSUES.md 06:20。
+ユーザー指示の転記（2026-09-17 21:46 JST「使用率確認なしで実行」）: 開始時の使用率確認は行わず、確認できないことを理由に停止しない。
+上限管理はユーザーが Codex デスクトップ側で行う。
 
-1. 期待値更新（Codex 所有、保護条件は緩めない）
-   - build-codex/tests/test_ops_v035_review.py::test_l03: 10:00 の保留を 08:00 で DISCARD → LedgerError、保留は残り、残高・履歴不変。
-     10:00 以後の DISCARD は受理され、09:00 の replay は保留行を含む（残高不変）ことを検査する形へ
-   - ops/tests/test_v03_integrity.py::test_discard_audit_actor_and_replay: DISCARD の at を保留行の at（AT+1h）以後にする。
-     監査 detail の actor 検査・再起動後の pending なしはそのまま
+一次資料: build-codex/EVIDENCE_BUNDLE_STORE_INDEPENDENT_REVIEW.md（Claude 作成、2026-09-20 09:11 JST）。
+単一スレッド経路は契約（末尾の「優先補足」節）と一致し実装バグなし。対象 4 ファイルの sha256 は同報告に記載。
+新規: build-codex/tests/test_evidence_bundle_store_claude_contract.py（37 件、Claude 環境で 37 passed / 1.91 秒。並行不変条件は 5 回反復で安定）。
 
-2. ops/tests/test_migration.py: `legacy` フィクスチャと test_m03 の `with sqlite3.connect(path) as con:` を
-   `with closing(sqlite3.connect(path)) as con, con:` に統一（原本 hash 比較が gc 依存で 8 回中 2 回失敗。D08 と同原因）。
-   assert は変えない
+1. R14-01（中）の採否と修正: 同じ束を 8 スレッドで同時 put すると 320 回中 WRITE_FAILED 27・RECORD_CORRUPT 2（最終記録は常に健全）。
+   原因は Windows の os.replace が置換先を開かれている間 PermissionError になること、既存確認の安全読取が置換と重なると「観測中に変化」で
+   失敗し put が一律 RECORD_CORRUPT に写すこと、失敗時に自分の一時ファイルを消さないこと。
+   推奨 (a)+(b): os.replace 失敗時は既存記録を再読し健全かつ投入バイト一致なら NO_OP、既存確認の読取失敗は短い間隔で数回だけ再読してから
+   RECORD_CORRUPT。新語彙・新保証は足さず API は最大 1 回のまま。不採用なら (c) 契約へ明記し既存並行試験の期待を合わせる。
+   修正する場合は 8 スレッド以上の並行試験を追加し、結果 ⊆ {STORED, NO_OP} を固定する。
+2. 契約案末尾の採否 2 節（「Codex 採否・実装契約」と「Codex採否・優先補足」）を一本化する。実装は後者に従っている。
+   前者に「後者に置換済み」と明記するか削除し、優先節を 1 つにする。
+3. 関連試験の Windows 実測 1 回（bundle store 3 本＋v2 関連）。passed/skipped/failed/秒/環境を記録。全体は製品を変えた場合のみ Codex の判断で 1 回。
+4. README 末尾に短く記録し、Claude 向け次回 B を必須 3 項目様式で保存する。修正した場合、Claude に求めるのは並行修正の重要差分 1 点に絞る。
 
-3. v0.3.6 の独立レビュー（反証は build-codex/tests または common/tests/phase2 へ）
-   - replay(at < SNAPSHOT.at) が空: 後着保留・遅着通知・訂正・EXTERNAL 注文・別オフセット・移行済み台帳（マーカー前後）
-   - 解決時刻の制約: 同時刻・別オフセット・時刻なし行・cutover 保留 TRADE・再生時の一致（旧版で受理された逆順履歴が
-     MigrationError(seq, PENDING_RESOLVED) で止まり、migrate --check に位置が出ること）
-   - 改訂案 v1.1 に (e) 開始残高前の replay は空（後着保留があっても）、(f) 解決時刻 ≥ 保留行の業務時刻、
-     (g) strip は全角空白・改行を含む前後の空白すべて（内部・正規化は対象外）を追記
+編集範囲は build-codex/aitrader/evidence_bundle_store.py（R14-01 を修正する場合のみ）、build-codex/tests/（新規または自分の既存 2 本）、
+契約文書、README、Claude_Opusキャッチボール.md、Codex引き渡しプロンプト.md の該当節。製品 v1/v2 既存コード・共通仕様・合成データ・examples・
+Claude の新規試験は変更しない。既存試験の削除・skip・xfail・条件緩和は禁止。保存先は Dropbox 外のみ。実API・実売買審査・LINE・証券接続・発注は行わない。
 
-完了条件: ops/ で `python -m pytest ../common/tests/phase2 ../build-codex/tests tests -q` の実測件数を build-codex/README.md に記録。
-388 件すべて通過した場合のみ「全件通過」と書く。build-codex/Claude引き渡しプロンプト.md の B を次の Claude 依頼に更新。
-報告は「報告の末尾」テンプレートに従う。
+完了条件: 1 の採否（修正時は並行試験の追加）、2 の一本化、3 の実測値、4 の保存。
 ```
 
 ---
@@ -121,5 +127,25 @@ test_migration.py の接続 close 統一、v0.3.6 の独立レビュー
 | 2026-09-09 05:58（確認開始） | 第9回 ops v0.3.5独立レビュー・改訂案反映（Codex） | 06:03終了。既存364維持、追加17件中14通過・3失敗。次はClaudeのL02修正とL03契約対応 |
 | 2026-09-09 06:03 | （Claude が実装）ops v0.3.6: L02 修正＋L03 契約決定＋strip 誤記訂正 | 06:20 完了。388 件中 386 通過（残 2 は L03 入力拒否と衝突する Codex 試験＝前提の誤り）。反例 7 件追加（M01〜M07）。B は並行セッションの pingpong レビューが先行中のため「保留中の依頼」に置いた。ops/Claude対応結果.md 第10回 |
 | 2026-09-09 06:35 | 自動引き渡し 2 方式の実装レビュー（Codex） | 06:55 開発ループから分離 → `tools/自動連携_Codex依頼.md`（別枠）。B は第10回 ops v0.3.6 に戻した |
+
+| 2026-09-09 06:20 | 第10回 ops v0.3.6 に合わせた期待値更新・接続 close・独立レビュー（Codex） | 06:40 完了（追補）。O 系列 7 件追加、402 件中 401 通過（A: O01 遅着通知への保留 APPLY の時点再生） |
+| 2026-09-09 06:49 | （Claude）ops v0.3.7: O01 修正＋文書明確化＋独立試験 P01〜P07 | 07:10 完了。411 件中 410 通過（残 1 は共通 test_ledger.py の時計依存＝テスト前提の誤り、Codex へ修正依頼）。ops/Claude対応結果.md 第11回 |
+| 2026-09-09 07:10 | 第11回 v0.3.7 独立レビュー＋test_ledger.py 時計依存フィクスチャ修正（Codex） | 07:07 完了。Q 系列 19 件追加、430 件中 428 通過（B: Q09 前倒し訂正、Q10 作成前の通知状態）。時計依存は at=AT で解消 |
+| 2026-09-09 08:05 | （Claude）ops v0.3.8: Q09 入力拒否＋Q10 識別補完＋独立試験 R01〜R10 | 08:12 完了。442 件中 441 通過（残 1 は Q09 のテスト前提変更、Codex へ期待値更新依頼）。ops/Claude対応結果.md 第12回 |
+| 2026-09-09 08:12 | 第12回 v0.3.8 独立レビュー＋Q09 期待値更新＋改訂案 (i)(j)（Codex） | 08:21 完了。T 系列 15 件追加、457 件中 453 通過（A: T06 EXPIRE 不明参照 ×3、B: T07 時刻なし訂正）。dev チャネルで公開 |
+| 2026-09-09 08:23 | （Claude）ops v0.3.9: T06 修正＋T07 有効時刻継承＋独立試験 S01〜S11、R06/R07 訂正 | 08:30 完了。469 件中 468 通過（残 1 は T07 のテスト前提変更、Codex へ期待値更新依頼）。ops/Claude対応結果.md 第13回 |
+| 2026-09-09 08:30 | 第13回 v0.3.9 独立レビュー＋T07 期待値更新＋改訂案 (k)（Codex） | 08:56 完了。U 系列 18 件追加、487 件全件通過。文書明確化 C01/C02 を Claude へ依頼。dev チャネルで公開 |
+| 2026-09-09 08:58 | （Claude）第14回: C01/C02 の文書明確化＋最終照合 | 09:05 完了。487 件全件通過を確認。ops v0.3.9 の双方確認完了。Codex 宛て B は「引き渡し不要」で公開 |
+| 2026-09-09 09:55 | 第15回 フェーズ2 順序4 の共通仕様案＋受入テスト先行作成（Codex） | 10:37 完了。仕様案 v0.1（build-codex/）、test_judges.py 69・test_notify.py 47。ACL 修復後に再実行。pytest 未導入で実測不可→質問→則光さん回答「両方」 |
+| 2026-09-09 10:40 | （Claude が実装）第16回 ops v0.4.0: judges / notify | 11:10 完了。633 件全件通過（受入 116＋独立試験 30）。Ledger.proposal() 追加。ops/Claude対応結果.md 第16回 |
+| 2026-09-09 11:22 | （Claude が実装）第17回 ops v0.4.1: Codex レビュー V01〜V13 の修正（V10 採用）＋独立試験 S01〜S11 | 11:40 完了。696 件全件通過（Codex レビュー 49 件を含む）。ops/Claude対応結果.md 第17回 |
+
+| 2026-09-11 20:20 | （Claude / Cowork）第18回 ops v0.4.1（Codex 単独継続分）の独立レビュー | 20:57 完了。反例 11 件追加、収集できた範囲で 306 件中 300 通過（A: W01 未来時刻の制御で緊急停止が無効化、B: W02 内容変更 enqueue の黙殺）。aitrader 未取得のため指定全体コマンドは未実行。ops/Claude対応結果.md 第18回 |
+| 2026-09-16 23:50 | （Claude）第11回: D10-01〜05 の未決契約整理（段表・件数表・E1〜E9 固定出力・履歴 v2 正規化契約） | Claude_Opusレビュー_証拠履歴_第11回.md。指摘 R11-01（低）1 件。参照計算のみ、pytest・fuzz なし。Codex へ採否と契約反映を依頼（未公開） |
+| 2026-09-17 14:29 | （Claude）第12回: 行履歴 v2・結合 v2 実装の独立確認（重要差分 3 点） | Claude_Opusレビュー_証拠履歴_第12回.md。実装バグ 0・契約違反 0。新規反証 30 件（test_history_validity_binding_v2_claude_contract.py）30 passed。R12-01 記録のみ。Codex へ関連実測・README 記録を依頼（公開） |
+| 2026-09-17 20:28 | （Claude）v2 CLI 契約案の作成と Codex への実装依頼（ユーザー指示で上限 40%→50% 仮定） | V2_CLI_CONTRACT_PROPOSAL.md。Codex へ v2 CLI 2 本の実装・試験・実測を依頼（公開） |
+| 2026-09-17 21:56 | （Claude）第13回: v2 CLI 2 本の読取境界・固定 stderr・終了コードの独立確認 | CLI_V2_INDEPENDENT_REVIEW.md。実装バグ 0。新規反証 30 件（test_history_v2_cli_claude_contract.py）30 passed。R13-01（--help、低）の採否を Codex へ依頼（公開） |
+| 2026-09-17 22:28 | （Claude）D13-01〜03 保存契約案の作成と Codex への採否・実装依頼 | EVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md（3 判断とも採用案を固定、反証表 30 件）。Codex へ実装可能性確認・実装・実測を依頼（公開） |
+| 2026-09-20 09:11 | （Claude）第14回: 人工束 put/verify の独立確認（原子性境界・hash 照合・API 呼出回数） | EVIDENCE_BUNDLE_STORE_INDEPENDENT_REVIEW.md。単一スレッド経路はバグ 0。R14-01（中: 多重並行 put で WRITE_FAILED 8.4%・偽 RECORD_CORRUPT 0.6%、データ破損 0）。新規反証 37 件 37 passed。B は保存のみ・未公開（D13 はデスクトップ側に一本化） |
 
 ※ Cowork（このセッション）からの `tools/run_codex_build.*` 自動起動は、Anthropic 側のネットワーク方針で OpenAI に到達できず失敗する（2026-09-08 確認）。自動起動は則光さんの PC 上の Claude Code から行う。往復の自動化は `tools/pingpong.ps1`（`tools/PINGPONG.md` 参照、2026-09-09 追加）。

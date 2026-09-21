@@ -1,0 +1,42 @@
+{
+  "mode": "evidence_history_fixture_v1",
+  "source_origin": "offline_fixture",
+  "decision_at": "2026-09-11T07:00:00+09:00",
+  "entries": [
+    {
+      "receipt_id": "artificial-r1",
+      "revision_id": "artificial-v1",
+      "subject": {
+        "group": "lots",
+        "code": "0001"
+      },
+      "observed_at": "2026-09-10T16:00:00+09:00",
+      "recorded_at": "2026-09-10T16:00:00+09:00",
+      "payload": {
+        "code": "0001",
+        "lot_size": 100
+      },
+      "sha256": "637cb0d97fcc5281cdbbd278a5b392150ad21e1def6bf614c1d5557993d351f5",
+      "supersedes": null
+    },
+    {
+      "receipt_id": "artificial-r2",
+      "revision_id": "artificial-v2",
+      "subject": {
+        "group": "lots",
+        "code": "0001"
+      },
+      "observed_at": "2026-09-12T06:00:00+09:00",
+      "recorded_at": "2026-09-12T06:00:00+09:00",
+      "payload": {
+        "code": "0001",
+        "lot_size": 200
+      },
+      "sha256": "53c5b4841c756e51f9b374840df775e2ac999cb745bb2688beaf8efa7c138985",
+      "supersedes": {
+        "revision_id": "artificial-v1",
+        "sha256": "637cb0d97fcc5281cdbbd278a5b392150ad21e1def6bf614c1d5557993d351f5"
+      }
+    }
+  ]
+}

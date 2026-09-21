@@ -67,3 +67,25 @@ Valuationにはday_start_equity、previous_peak、net_external_flow（入金−�
 ## 2026-09-09 精算金入力契約
 
 DIVIDENDのPOST_EXIT_SETTLEMENTは投資由来の受取であり、Valuation.net_external_flow（利用者の外部入金−出金）に含めない。noteからの自動集計は未実装で、入力側が取得済み明細を照合して区別する。opsのcutover保留TRADE/CSVはpending_rowsに残り、runnerの既存の未解決判定で新規候補を停止する。provenanceなしの既存台帳へcutoverが自動設定されるわけではない。
+
+## 2026-09-11 審査モジュールとの模擬接続
+
+aitrader.review_runner.run_reviewed_mock を追加。生成済みProposalと明示された両judgeのstub記録を受け、同一render_packetをops.judges.reviewへ渡し、検証済みVerdictを既存runへ渡す。引数はrunのhome/run_id/execution_day/proposals/now/valuationに加え、responses、started_at、market_context。responsesは {proposal_id: {judge: {record: dict, received_at: aware datetime}}}。recordの形式は順序4仕様案のstdout/final_message/exit_code/elapsed_seconds。
+
+モデル・CLI版はmock固定、transportはstub固定。欠けたjudgeを自動承認で補わない。未知judge・候補ID・未来受信時刻はログ・予約前に拒否。判定ログはDropbox外home/runs/<day>/<run_id>/reviewsへ保存し、failureとパケットを監査できる。ログ保存失敗ならrunへ進まない。台帳は従来のAPPROVEDまで、通知案はNOT_SENTのまま。
+
+judge単体は07:15ちょうどを許すが、主系runnerは07:15以上を未完了とする既存の厳しい境界を維持。再呼出しは審査ログを追記するが、同じrun入力なら台帳予約は増えない。実CLI・通知器接続・市場取得の自動起動・完全なクラッシュ復旧は本追加の範囲外。market_contextと生の応答は審査ログに残るが、runnerの実行同一性は既存のProposalと正規化Verdict等に基づく。
+
+追加test_review_runner.py 11件通過（6.41秒）。承認/拒否/棄権、欠損、timeout、malformed、hash不一致、未知judge、未来受信、締切、重複予約をオフライン検証。既存含む全体754 passed in 20.14s、skip/xfailなし。次工程は通知器との模擬結合と、台帳・outboxを跨ぐ復旧契約の整理。両見張りは無効化を維持し、Claudeへの公開なし。
+
+## 2026-09-11 08:13 JST — 3並列レビュー統合
+
+主担当＋サブエージェント3体（この環境の同時4枠）で実施。審査接続レビュー、通知結合設計、追加反証を分担した。
+
+発見3点：判定reasonの秘密値がverdicts.jsonに再露出、同runで参照情報・審査開始時刻を変更できる、07:00前に完了した審査を受け入れる。修正は成果物保存時の再帰マスク（判定値やhash計算は変更しない）、審査前の入力hash耐久保存と専用ロック、開始時刻07:00下限。
+
+review-inputs.sqliteはrun_idにpacket全文・生record・開始時刻・評価値等のhashを紐付け、変更を審査ログ追記前に拒否する。生の秘密値を入力台帳へ保存しない。review-lock.sqliteは主系接続呼出し同士を直列化。失敗時も入力紐付けは残り、変更入力での暗黙再開は拒否。既存runnerを直接呼ぶ別プロセスとの共通ロックではない。
+
+追加反証21件（test_review_runner_edges.py）通過12.01秒。全ファイル確定後の全体 **775 passed in 22.77s**、skip/xfailなし。全通信・外部プロセス禁止fixtureで検証。途中の771件は追加4ケース確定前の集計で、最終数ではない。
+
+通知結合の次工程は [NOTIFY_INTEGRATION_PLAN.md](NOTIFY_INTEGRATION_PLAN.md)。未決契約を含む設計のみで、通知器の結合や完全自動復旧を実装済みとは扱わない。Claude独立レビューではなくCodex内の並列検証。両見張りはDisabledを維持、公開・実通信なし。引き渡し不要。

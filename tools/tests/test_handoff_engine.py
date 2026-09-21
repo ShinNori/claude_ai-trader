@@ -8,8 +8,8 @@ import time
 import unittest
 from unittest.mock import patch
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-import handoff_engine as h
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'automation'))
+import codex_engine as h
 
 
 class HandoffTests(unittest.TestCase):

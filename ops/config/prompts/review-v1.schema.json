@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ai-trader review verdict (review-v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["proposal_id", "packet_hash", "decision", "risks", "reason", "confidence"],
+  "properties": {
+    "proposal_id": {"type": "string", "minLength": 1},
+    "packet_hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "decision": {"type": "string", "enum": ["APPROVE", "REJECT", "ABSTAIN"]},
+    "risks": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "reason": {"type": "string", "maxLength": 200},
+    "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+  }
+}

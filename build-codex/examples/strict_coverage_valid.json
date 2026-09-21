@@ -1,0 +1,50 @@
+{
+  "mode": "strict_coverage_v1",
+  "source_origin": "offline_fixture",
+  "request": {
+    "start": "2026-09-10",
+    "end": "2026-09-11",
+    "expected_pages": [
+      "page-1",
+      "page-2"
+    ],
+    "expected_records": [
+      {
+        "code": "0001",
+        "date": "2026-09-10"
+      },
+      {
+        "code": "0001",
+        "date": "2026-09-11"
+      }
+    ]
+  },
+  "source_documents": [
+    {
+      "id": "artificial-1",
+      "sha256": "b8a1a6a67b7f28880746c7817166347736a667bb3366a74d22bf33381f66a0cf",
+      "payload": {
+        "page_id": "page-1",
+        "rows": [
+          {
+            "code": "0001",
+            "date": "2026-09-10"
+          }
+        ]
+      }
+    },
+    {
+      "id": "artificial-2",
+      "sha256": "3c80dab159041b59262a8bd56635b814679749814f630d44f63a55ea3d0cbc7e",
+      "payload": {
+        "page_id": "page-2",
+        "rows": [
+          {
+            "code": "0001",
+            "date": "2026-09-11"
+          }
+        ]
+      }
+    }
+  ]
+}

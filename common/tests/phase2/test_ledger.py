@@ -36,7 +36,7 @@ def csv_fill(id='csv1',broker='b1'):
 @pytest.fixture
 def ledger(tmp_path):
     l=Ledger(tmp_path/'ledger.sqlite'); l.init_snapshot(1000000,[],[],AT-timedelta(days=1))
-    p=proposal(); l.create_notice(p)
+    p=proposal(); l.create_notice(p, at=AT)
     l.set_notice_state(p.proposal_id,'APPROVED',AT)
     l.set_notice_state(p.proposal_id,'SENT',AT)
     return l

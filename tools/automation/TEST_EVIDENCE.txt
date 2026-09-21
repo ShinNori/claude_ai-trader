@@ -1,0 +1,63 @@
+test_blocked_state_is_global_across_channels (test_handoff_channels.DevChannelTests.test_blocked_state_is_global_across_channels) ... ok
+test_c04_deeper_headings_end_section_b (test_handoff_channels.DevChannelTests.test_c04_deeper_headings_end_section_b) ... ok
+test_dev_files_and_questions_are_separate_from_auto (test_handoff_channels.DevChannelTests.test_dev_files_and_questions_are_separate_from_auto) ... ok
+test_dev_question_file_blocks_only_dev (test_handoff_channels.DevChannelTests.test_dev_question_file_blocks_only_dev) ... ok
+test_dev_run_uses_dev_prompt_and_updates_dev_claude_file (test_handoff_channels.DevChannelTests.test_dev_run_uses_dev_prompt_and_updates_dev_claude_file) ... ok
+{"status": "settling"}
+{"status": "settling"}
+{"status": "dryrun", "channel": "auto", "agent": "codex", "published": true, "hash": "c1a747f3fd421573fe754290605cfb495ef659f2641949977e445ca190793e9a", "summary": "auto codex 初期", "question": null, "blocked": null, "command": ["C:\\Users\\s\\AppData\\Local\\OpenAI\\Codex\\bin\\8e5b6932251c2c1c\\codex.exe", "-a", "never", "exec", "--sandbox", "workspace-write", "--skip-git-repo-check", "-C", "C:\\Users\\s\\AppData\\Local\\Temp\\handoff-dev-61ah5ty9\\ai-trader ※ 日本語", "--output-last-message", "C:\\Users\\s\\AppData\\Local\\Temp\\handoff-dev-61ah5ty9\\runtime\\automation-handoff\\d23b5a0050b1efe4\\preview_last.md", "-"], "cli_found": true, "cli_error": null, "processed": false, "runtime": "C:\\Users\\s\\AppData\\Local\\Temp\\handoff-dev-61ah5ty9\\runtime\\automation-handoff\\d23b5a0050b1efe4"}
+{"status": "dryrun", "channel": "dev", "agent": "codex", "published": true, "hash": "731e67009e5ef36c8cbc09ab49a6d314464fd3014abb4c5c48b1ae0074285b5b", "summary": "dev codex 初期", "question": null, "blocked": null, "command": ["C:\\Users\\s\\AppData\\Local\\OpenAI\\Codex\\bin\\8e5b6932251c2c1c\\codex.exe", "-a", "never", "exec", "--sandbox", "workspace-write", "--skip-git-repo-check", "-C", "C:\\Users\\s\\AppData\\Local\\Temp\\handoff-dev-61ah5ty9\\ai-trader ※ 日本語", "--output-last-message", "C:\\Users\\s\\AppData\\Local\\Temp\\handoff-dev-61ah5ty9\\runtime\\automation-handoff\\d23b5a0050b1efe4\\preview_last.md", "-"], "cli_found": true, "cli_error": null, "processed": false, "runtime": "C:\\Users\\s\\AppData\\Local\\Temp\\handoff-dev-61ah5ty9\\runtime\\automation-handoff\\d23b5a0050b1efe4"}
+test_no_status_file_flag_and_dry_run_write_nothing (test_handoff_channels.DevChannelTests.test_no_status_file_flag_and_dry_run_write_nothing) ... ok
+test_pending_section_under_hash3_is_not_part_of_b (test_handoff_channels.DevChannelTests.test_pending_section_under_hash3_is_not_part_of_b) ... ok
+test_state_keys_are_channel_scoped_and_lock_is_shared (test_handoff_channels.DevChannelTests.test_state_keys_are_channel_scoped_and_lock_is_shared) ... ok
+{"status": "settling"}
+{"status": "question", "file": "ops/QUESTIONS.md"}
+test_status_file_written_by_multi_channel_watch_once_and_question_does_not_stop_other_channel (test_handoff_channels.DevChannelTests.test_status_file_written_by_multi_channel_watch_once_and_question_does_not_stop_other_channel) ... ok
+test_unknown_channel_rejected (test_handoff_channels.DevChannelTests.test_unknown_channel_rejected) ... ok
+test_alternation_uses_one_budget_and_stops_on_done (test_handoff_engine.HandoffTests.test_alternation_uses_one_budget_and_stops_on_done) ... ok
+test_corrupt_state_fails_closed (test_handoff_engine.HandoffTests.test_corrupt_state_fails_closed) ... ok
+test_crash_keeps_running_claim_and_blocks_later_work (test_handoff_engine.HandoffTests.test_crash_keeps_running_claim_and_blocks_later_work) ... ok
+test_daily_limit_shared_and_new_day_resets (test_handoff_engine.HandoffTests.test_daily_limit_shared_and_new_day_resets) ... ok
+test_done_and_runtime_inside_checkout_rejected (test_handoff_engine.HandoffTests.test_done_and_runtime_inside_checkout_rejected) ... ok
+test_dryrun_has_no_state_logs_claim_or_git (test_handoff_engine.HandoffTests.test_dryrun_has_no_state_logs_claim_or_git) ... ok
+test_failed_agent_cannot_release_published_output (test_handoff_engine.HandoffTests.test_failed_agent_cannot_release_published_output) ... ok
+test_failure_blocks_both_agents_and_does_not_retry (test_handoff_engine.HandoffTests.test_failure_blocks_both_agents_and_does_not_retry) ... ok
+test_global_lock_covers_both_agents (test_handoff_engine.HandoffTests.test_global_lock_covers_both_agents) ... ok
+test_history_edits_do_not_retrigger_completed_request (test_handoff_engine.HandoffTests.test_history_edits_do_not_retrigger_completed_request) ... ok
+test_local_child_receives_literal_unicode_stdin_and_arguments (test_handoff_engine.HandoffTests.test_local_child_receives_literal_unicode_stdin_and_arguments) ... ok
+test_parser_rejects_missing_multiple_request_and_unclosed_fence (test_handoff_engine.HandoffTests.test_parser_rejects_missing_multiple_request_and_unclosed_fence) ... ok
+test_pending_subsection_is_not_part_of_active_b (test_handoff_engine.HandoffTests.test_pending_subsection_is_not_part_of_active_b) ... ok
+test_question_blocks_even_with_old_mtime (test_handoff_engine.HandoffTests.test_question_blocks_even_with_old_mtime) ... ok
+test_republished_identical_body_does_not_repeat (test_handoff_engine.HandoffTests.test_republished_identical_body_does_not_repeat) ... ok
+test_self_modified_input_stops_chain (test_handoff_engine.HandoffTests.test_self_modified_input_stops_chain) ... ok
+test_stability_requires_second_observation_and_elapsed_time (test_handoff_engine.HandoffTests.test_stability_requires_second_observation_and_elapsed_time) ... ok
+test_success_and_restart_never_repeat_hash (test_handoff_engine.HandoffTests.test_success_and_restart_never_repeat_hash) ... ok
+test_timeout_stops_local_child (test_handoff_engine.HandoffTests.test_timeout_stops_local_child) ... ok
+test_timeout_terminates_descendant (test_handoff_engine.HandoffTests.test_timeout_terminates_descendant) ... ok
+test_unchanged_output_stops_chain (test_handoff_engine.HandoffTests.test_unchanged_output_stops_chain) ... ok
+test_unpublished_and_changed_draft_are_not_claimed (test_handoff_engine.HandoffTests.test_unpublished_and_changed_draft_are_not_claimed) ... ok
+test_actual_done_run_does_not_start_second_channel_in_same_tick (test_handoff_review.ReviewTests.test_actual_done_run_does_not_start_second_channel_in_same_tick) ... ok
+test_dev_prompt_prohibits_self_resolving_questions (test_handoff_review.ReviewTests.test_dev_prompt_prohibits_self_resolving_questions) ... ok
+test_fenced_b_examples_and_long_fences_are_not_protocol (test_handoff_review.ReviewTests.test_fenced_b_examples_and_long_fences_are_not_protocol) ... ok
+test_heartbeat_refreshes_during_a_long_turn_and_stops_afterwards (test_handoff_review.ReviewTests.test_heartbeat_refreshes_during_a_long_turn_and_stops_afterwards) ... ok
+test_idle_done_channel_still_checks_other_channel (test_handoff_review.ReviewTests.test_idle_done_channel_still_checks_other_channel) ... ok
+test_marker_in_code_is_not_publication (test_handoff_review.ReviewTests.test_marker_in_code_is_not_publication) ... ok
+test_once_question_is_not_hidden_by_later_idle_channel (test_handoff_review.ReviewTests.test_once_question_is_not_hidden_by_later_idle_channel) ... ok
+test_pingpong_dispatches_both_agents_and_stops_at_one_round (test_handoff_review.ReviewTests.test_pingpong_dispatches_both_agents_and_stops_at_one_round) ... ok
+test_preview_validates_explicit_cli_and_never_claims_work (test_handoff_review.ReviewTests.test_preview_validates_explicit_cli_and_never_claims_work) ... ok
+test_resume_checks_dev_questions_even_with_default_auto (test_handoff_review.ReviewTests.test_resume_checks_dev_questions_even_with_default_auto) ... ok
+test_resume_preview_creates_no_runtime (test_handoff_review.ReviewTests.test_resume_preview_creates_no_runtime) ... ok
+test_state_counter_and_observation_corruption_stop_before_launch (test_handoff_review.ReviewTests.test_state_counter_and_observation_corruption_stop_before_launch) ... ok
+test_status_contains_no_prompt_summary_or_runtime_path (test_handoff_review.ReviewTests.test_status_contains_no_prompt_summary_or_runtime_path) ... ok
+test_status_files_do_not_collide_between_agents (test_handoff_review.ReviewTests.test_status_files_do_not_collide_between_agents) ... ok
+test_encoded_task_action_quotes_paths_and_preserves_exit_code (test_handoff_windows.WindowsEntryTests.test_encoded_task_action_quotes_paths_and_preserves_exit_code) ... ok
+test_invalid_channel_and_limit_are_rejected (test_handoff_windows.WindowsEntryTests.test_invalid_channel_and_limit_are_rejected) ... ok
+test_register_dryrun_no_files_changed (test_handoff_windows.WindowsEntryTests.test_register_dryrun_no_files_changed) ... ok
+test_register_only_uses_interactive_limited_principal_without_starting (test_handoff_windows.WindowsEntryTests.test_register_only_uses_interactive_limited_principal_without_starting) ... ok
+test_running_existing_task_is_not_replaced (test_handoff_windows.WindowsEntryTests.test_running_existing_task_is_not_replaced) ... ok
+test_watch_and_pingpong_and_publish_dryrun_channels (test_handoff_windows.WindowsEntryTests.test_watch_and_pingpong_and_publish_dryrun_channels) ... ok
+
+----------------------------------------------------------------------
+Ran 52 tests in 5.978s
+
+OK
