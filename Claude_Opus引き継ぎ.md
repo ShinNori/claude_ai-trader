@@ -138,3 +138,24 @@ New Chat ＋ この文書が実質的な手動圧縮にあたる。自動圧縮�
 | 8 | 2026-09-13 08:32 JST | R7 対応＋期間証拠履歴の設計レビュー。R8-01〜05。最小契約案を提示。サブエージェント 7 体並列 |
 | 9 | 2026-09-13 09:30 JST | R8 対応＋採用された期間履歴契約の点検。R9-01〜05。人工例・固定出力・CLI 案を提示。7 体並列 |
 | 10 | 2026-09-14 05:57 JST | 期間履歴 API/CLI の実装レビュー。契約違反 0、R10-01〜03（低）。結合 v2 最小契約案を提示。8 体並列 |
+
+---
+
+## PC 移行メモ（2026-09-25 07:52 JST、Claude Code 記載）
+
+ユーザー指示「PC を変更したい」への引き継ぎ。git（remote: https://github.com/ShinNori/claude_ai-trader.git、master）にすべてコミット済み。
+
+### 新しい PC での手順
+
+1. `git clone https://github.com/ShinNori/claude_ai-trader.git` を **Dropbox の外**（例: `D:\work\ai-trader`）に置く。Dropbox 内の .git は同期で壊れることがあるため、Dropbox 側は参照用にする。
+2. Python は Codex 同梱の `%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`（CPython 3.12）を使う。`python` コマンドは Windows Store のスタブで動かないことがある。
+3. Codex CLI は `%LOCALAPPDATA%\OpenAI\Codex\bin\<版hash>\codex.exe`。**Codex が自動更新されるとフォルダ名が変わり、見張りが静かに止まる**。更新後は再登録が必要。
+4. 見張りの再登録: `powershell -NoProfile -ExecutionPolicy Bypass -File tools\automation\register_watch_task.ps1 -Replace -Channel dev -CodexExe <上記 codex.exe>`。auto チャネルには古い未処理依頼が残っているので dev のみで登録する。
+5. 保存先 `AI_TRADER_HOME` は Dropbox 外（既定 `~/.ai-trader`）。エンジン状態も同じ場所にあり、PC を変えると処理済み記録は引き継がれない（同じ依頼を再起動しないよう、公開マーカーの hash で確認する）。
+6. Claude Code の記憶（memory）は PC・パスごとに別。新 PC の最初のセッションで次を伝える: 「報告末尾に JST 時刻とトークン残量を 1 行」「往復 1 回ごとに 1 コミット、push は指示時のみ」「D13 の担当はデスクトップ側 Codex に一本化」。
+
+### 移行時点の状態
+
+- 最新は第14回（put/verify 独立確認、R14-01 中 1 件）。Codex 宛 B は保存のみ・未公開で、R14-01 の採否は未回答。
+- QUESTIONS.md の質問はすべて解決マーカー済み。エンジンの blocked は旧 hash のまま（再開時に `codex_engine.py resume`）。
+- 見張りタスク「ai-trader handoff watch codex」は旧 PC 側の登録。新 PC では上記 4 で登録し直す。
