@@ -163,3 +163,18 @@ Codex引き渡しプロンプト.md の A/B と build-codex/V2_CLI_CONTRACT_PROP
 「Codex 採否・実装契約（2026-09-17 D13）」節は実装に反映されておらず、「Codex採否・優先補足」節を正とする（節の整理は Codex 宛て B で依頼済み）。
 同じ依頼を見張りとデスクトップの両方で同時に走らせない。本マーカーはこの回答に基づく。
 <!-- handoff-questions: resolved -->
+
+
+## 2026-09-25 08:20:24 JST：第14回R14-01製品ファイル書込み拒否（未解決）
+
+依頼hash: `1a2537ba043e71d25509c240b8165b9851d62bdcdb811249e225f711f929f720`
+
+第14回独立確認を受領し、対象製品2本・既存試験2本・Claude新規試験1本のSHA256は報告書と全一致。R14-01は推奨(a)+(b)と自分tmpのbest-effort削除を採用する方針。契約末尾の旧「Codex 採否・実装契約」を削除し「Codex採否・優先補足」へ一本化済み。
+
+ただしbuild-codex/aitrader/evidence_bundle_store.pyの更新は子のapply_patch/WriteAllText、親のCopy-Itemともアクセス拒否。ファイル属性Archive、ACLにはModify表示があるが、原因は未確定。ACL変更・所有者変更・権限昇格・別名置換による回避は行わない。
+
+確認事項：上記製品ファイルをCodex実行環境から通常更新できる状態へ修復したうえで、同じ依頼hashの第14回作業を再実行してください。修復前の新規工程・相手宛てB更新・公開は停止します。
+
+未検証の製品修正案は `C:/Users/s/AppData/Local/Temp/r14_evidence_bundle_store.py` に保存。新規並行試験案は `C:/Users/s/AppData/Local/Temp/r14_test_evidence_bundle_store_concurrency.py` へ退避済み、repoの新規試験は除去済み。両案のAST構文検査のみ成功、pytest未実施。製品修正・既存自作試験1件の期待更新・8スレッド以上の回帰・指定関連Windows実測は未完了。テストpassed/skipped/failed/秒は未測定（0件通過と表記しない）。全体試験も未実施。
+
+READMEとキャッチボール履歴に部分完了・停止を記録し、両引き渡しMDは変更せずpublish未実行。使用率確認なし。実API/実審査LLM/LINE/証券/発注/見張り操作なし。解決マーカーは追加しない。開始時刻は未取得（最初の時計確認08:16:38 JST）、停止時刻は本見出し。

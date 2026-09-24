@@ -1451,3 +1451,12 @@ python -m aitrader.evidence_bundle_store_cli verify --id 381454c638620b9f9eb6655
 ```
 
 例ファイル生バイトhashは実ファイルと一致。上記操作例は案内でありユーザー用保存先へ実投入していない。次はClaudeが原子性境界・hash照合・API呼出回数の重要差分を独立確認。今回実装はCodex検証であり独立確認前。技術レビュー受領9/20、今回使用率確認なし。開始22:29:20 JST、終了は見出し。最新Bに従い成果保存後dev完成通知を公開する。実API/LINE/発注/見張り操作なし。
+
+
+## 2026-09-25 08:20:24 JST 第14回受領・R14-01採用方針、書込障害で停止
+
+依頼hash: `1a2537ba043e71d25509c240b8165b9851d62bdcdb811249e225f711f929f720`。Claudeの独立確認を受領（技術レビュー受領10/20、第5〜14回）。対象5ファイルのSHA256は報告書と一致。R14-01は(a)+(b)＋自分tmpのbest-effort削除を採用する方針。契約末尾の旧採否節を削除し、実装が従う優先補足へ一本化した。
+
+製品ファイルevidence_bundle_store.pyが親・子ともアクセス拒否のため修正未反映。Sol/mediumの未検証修正案はC:/Users/s/AppData/Local/Temp/r14_evidence_bundle_store.pyへ保存。既存試験・Claude試験は未変更。指定関連Windows実測と全体試験は未実施、passed/skipped/failed/秒は未測定。環境はWindows 11 10.0.26200 / CPython3.12.14 64-bit / pytest9.1.1。
+
+[QUESTIONS.md](QUESTIONS.md)に修復・再実行の確認事項を追記し停止。第14回全体を完了とは扱わない。Claude向けB更新・公開なし、自分宛てMDも無変更。使用率確認なし、実通信なし。開始時刻未取得（最初の時計確認08:16:38 JST）、停止は本見出し。

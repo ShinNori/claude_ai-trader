@@ -171,21 +171,9 @@ fuzz は不要（内容アドレスと固定手順で状態空間が小さい）
 
 更新時刻: 2026-09-17 22:27 JST。保存のみ・未公開・未送信。
 
-## Codex 採否・実装契約（2026-09-17 D13）
+## Codex採否・優先補足（2026-09-17採用、2026-09-25 R14統合）
 
-D13-01〜03を下記の補正付きで採用する。既存v1/v2評価器・CLI・共通仕様を変更せず、独立した人工束ストアとして実装可能。保存先はDropbox外のみで、既存市場DBへの取込や売買経路への接続は含めない。本節を上記案の矛盾する表記より優先する。
-
-- D13-01：生バイトSHA-256をIDとして採用。異なるバイトのhashが「必ず異なる」という数学的保証は採用しない。同IDの既存記録は再現性に加えて投入生バイトとの一致を確認し、異なればRECORD_CORRUPTで上書き拒否。通常の同一再投入はNO_OP。
-- D13-02：同一ディレクトリの一時ファイル、flush/fsync/close、os.replace復帰を成功境界とする方式を採用。電源断時の完全性・不在・ディレクトリ耐久は保証しない。置換前の失敗でも既存ファイルは残り得るため「復帰前なら必ず不在」は不採用。通常の並行投入は同じAPI版で同じ束を評価する前提。異なる実装版の同時書込や悪意ある外部プロセスとの競合耐性は保証外。
-- D13-03：不成功束の保存と保存時出力の全キー再照合を採用。APIは評価段に到達した操作で1回、事前拒否では0回。既存記録へのputはverify経由の1回だけで、再評価を重ねない。出力の比較ではbool/int等の型差も拒否する。
-- CLIは保存APIのstatusを終了値の根拠とする。STORED/NO_OP/REPRODUCEDなら0（bundle_statusがDATA_INCOMPLETEでも同じ）。保存API自身のDATA_INCOMPLETEは2＋JSON。入力読取失敗・引数・予期しない例外は2、stdout空、固定stderr。反証表28の「DATA_INCOMPLETE束で終了2」はこの区別へ補正する。helpは既存R13-01(b)と同様にusage・終了0。
-
-§6の4点を確定：stored_atはdatetime.now(timezone.utc)由来のtimezone付きISO 8601、ディレクトリはevidence_bundles、拡張子は.bundle.json、一時ファイル掃除コマンドは追加しない。保存先ガードはdb._runtime_path_guardを流用し、duckdbのimport依存は既存必須依存として許容する。DB接続・作成は呼ばない。stored_atは置換前に記録する作成時刻であり、厳密な確定瞬間を証明しない。
-
-入力はpacket_cli._mappingを同一オブジェクトとして流用し、別の安全な生バイト読取とJSON再解析結果を照合する。既存_mapping/_Parserは変更しない。記録のstored_atはtimezone付き日時、bundle_bytesはboolを除く整数、base64は標準形式として検査する。verifyのIDは小文字hex64桁のみとし、不正IDはRECORD_CORRUPT、ファイル参照前に拒否する。記録読取の失敗はRECORD_UNREADABLE、記録形式のキー集合・版不一致はUNSUPPORTED_FORMAT。保存済みoutputのキー・値・型不一致はOUTPUT_MISMATCH。これらは新規ストアの受入規則で、既存v2 APIの受入域を変更しない。
-
-
-## Codex採否・優先補足（2026-09-17）
+旧「Codex 採否・実装契約」節は本節に置換済みとして削除し、採否の優先節をここへ一本化した。不正IDはRECORD_UNREADABLE、入力読取拒否はAPIのDATA_INCOMPLETE＋JSON・CLI終了2を維持する。
 
 D13-01〜03を以下の修正付きで採用する。本節は上の草案と衝突する場合に優先する。新規オフライン保存API/CLIだけを対象とし、既存v1/v2・共通安全読取・共通Parser・db.pyは変更しない。
 
@@ -214,3 +202,11 @@ D13-01〜03を以下の修正付きで採用する。本節は上の草案と衝
 verifyはID形式を最初に検査し、その後に保存先ガードを行う。invalid IDとinvalid homeの複合不正はRECORD_UNREADABLEが先。安全読取のJSON不正はRECORD_UNREADABLE、7キー/保存版違いはUNSUPPORTED_FORMAT、base64/hash/長さ/stored_atの破損はRECORD_CORRUPT、API版違いはUNSUPPORTED_FORMAT。記録outputの形・型・値の相違はAPIを1回評価した後のOUTPUT_MISMATCHであり、trueと1も区別する。
 
 失敗時も13キーを維持。判明済みのbundle_sha256/bundle_bytesは保持し、不明値はnull。未評価ならbundle_status=null・bundle_reason_codes=[]。書込失敗で評価済みなら内側のstatus/reasonsを診断に保持する。OUTPUT_MISMATCHでは再評価した内側結果と既存stored_at/record_pathを保持し、それ以外の失敗ではstored_at/record_path=null。putの既存記録再読失敗は一律RECORD_CORRUPT、記録を変更しない。
+
+### R14-01採否・実装保留（2026-09-25）
+
+第14回独立確認のR14-01（中）を受領し、推奨(a)+(b)と自分の一時ファイルのbest-effort後始末を採用する方針を決定。ただし製品ファイルへの書込みがAccess deniedで停止したため、修正は未反映・未検証であり、上記の現行契約・反証表は変更しない。
+
+再開時の修正案は、putのRECORD_UNREADABLEに限り最大3回・間隔5msで再読し、形式/hash/出力不一致は即時拒否する。os.replace失敗後は安全な既存記録の形式/hash/API版/束JSONと投入raw一致を確認し、保存outputと既に評価した自前outputを型込みで照合できた場合だけNO_OPにする。API再呼出は行わず各操作最大1回を維持する。確認できなければWRITE_FAILED。自分のtmpのみbest-effort削除し、既存自作試験1件は非残留を必須とする期待へ変更予定（未変更）。
+
+8スレッド以上の結果がSTORED/NO_OPのみとなる試験、API回数・破損非上書き・有限再読・後始末の回帰、および指定Windows関連実測は未実施。電源断/悪意ある外部変更/別実装版の競合保証を追加しない。修正案の保存場所と再開条件はQUESTIONS.mdの本依頼hash節を参照。
