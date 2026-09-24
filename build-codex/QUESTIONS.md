@@ -178,3 +178,10 @@ Codex引き渡しプロンプト.md の A/B と build-codex/V2_CLI_CONTRACT_PROP
 未検証の製品修正案は `C:/Users/s/AppData/Local/Temp/r14_evidence_bundle_store.py` に保存。新規並行試験案は `C:/Users/s/AppData/Local/Temp/r14_test_evidence_bundle_store_concurrency.py` へ退避済み、repoの新規試験は除去済み。両案のAST構文検査のみ成功、pytest未実施。製品修正・既存自作試験1件の期待更新・8スレッド以上の回帰・指定関連Windows実測は未完了。テストpassed/skipped/failed/秒は未測定（0件通過と表記しない）。全体試験も未実施。
 
 READMEとキャッチボール履歴に部分完了・停止を記録し、両引き渡しMDは変更せずpublish未実行。使用率確認なし。実API/実審査LLM/LINE/証券/発注/見張り操作なし。解決マーカーは追加しない。開始時刻は未取得（最初の時計確認08:16:38 JST）、停止時刻は本見出し。
+
+ユーザー回答の転記（2026-09-25 08:30 JST、Claude Code が転記）: 「私（Claude）が Codex の修正案を適用」を選択。
+Claude 側の調査では対象ファイルの ACL・所有者は隣接ファイルと同一、排他オープン可、Defender のフォルダー アクセス制御は無効で、拒否の原因は未特定。
+Claude が TEMP の修正案（sha256 1e7cf927…）を製品へバイト単位で移植し、並行試験案を tests/test_evidence_bundle_store_concurrency.py として追加、
+既存試験 1 件（置換失敗時の tmp 残留）の期待を修正仕様に合わせて更新した。関連 12 ファイルを Windows で実測: 230 passed / 5 skipped / 0 failed / 8.22 秒、
+並行試験は 5 回反復で全通過。製品を Claude が書いたのは今回限りの例外で、役割分担（製品は Codex 所有）は変更しない。本マーカーはこの回答に基づく。
+<!-- handoff-questions: resolved -->

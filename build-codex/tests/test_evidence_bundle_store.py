@@ -283,13 +283,14 @@ def test_record_write_failure_has_no_final_file(tmp_path, monkeypatch):
     assert not _record(home).exists()
 
 
-def test_replace_failure_leaves_only_ignored_tmp(tmp_path, monkeypatch):
+def test_replace_failure_cleans_own_tmp_and_leaves_no_record(tmp_path, monkeypatch):
+    # R14-01 (2026-09-25): a failed replace now removes the writer's own tmp file.
     home = tmp_path / "runtime"
     monkeypatch.setattr(store.os, "replace", lambda *args: (_ for _ in ()).throw(OSError()))
     result = store.put(_source(tmp_path), home)
     assert result["reason_codes"] == ["WRITE_FAILED"]
     assert not _record(home).exists()
-    assert list((home / "evidence_bundles").glob("*.tmp"))
+    assert not list((home / "evidence_bundles").glob("*.tmp"))
     assert store.verify(IDENTIFIER, home)["reason_codes"] == ["RECORD_NOT_FOUND"]
 
 

@@ -12,6 +12,7 @@ from pathlib import Path
 import re
 import stat
 import tempfile
+import time
 
 from .db import default_home, _runtime_path_guard
 from .history_validity_binding_v2 import (
@@ -27,12 +28,21 @@ STORE_DIRECTORY = "evidence_bundles"
 RECORD_SUFFIX = ".bundle.json"
 MAX_BUNDLE_BYTES = 1024 * 1024
 MAX_RECORD_BYTES = 2 * 1024 * 1024
+PUT_READ_ATTEMPTS = 3
+PUT_READ_RETRY_SECONDS = 0.005
 
 _ID = re.compile(r"[0-9a-f]{64}\Z", re.ASCII)
 _RECORD_KEYS = {
     "store_format", "bundle_sha256", "bundle_bytes", "bundle_base64",
     "api_mode", "output", "stored_at",
 }
+_NO_PRECOMPUTED_OUTPUT = object()
+
+
+class _ReplaceFailed(Exception):
+    """The final replace failed after the temporary record was complete."""
+
+
 def _result(*, read_only, status="DATA_INCOMPLETE", reason=None,
             bundle_sha256=None, bundle_bytes=None, output=None,
             stored_at=None, record_path=None):
@@ -174,7 +184,7 @@ def _record_path(identifier):
     return f"{STORE_DIRECTORY}/{identifier}{RECORD_SUFFIX}"
 
 
-def _verify(directory, identifier):
+def _verify(directory, identifier, expected_output=_NO_PRECOMPUTED_OUTPUT):
     """Internal verify returning decoded bytes for collision checking."""
     known = identifier if _ID.fullmatch(identifier) is not None else None
     if known is None:
@@ -229,7 +239,9 @@ def _verify(directory, identifier):
             read_only=True, reason="UNSUPPORTED_FORMAT",
             bundle_sha256=known, bundle_bytes=size), raw
     saved_output = record.get("output")
-    output = inspect_history_validity_binding(bundle)
+    output = (inspect_history_validity_binding(bundle)
+              if expected_output is _NO_PRECOMPUTED_OUTPUT
+              else expected_output)
     common = dict(
         read_only=True, bundle_sha256=known, bundle_bytes=size, output=output,
         stored_at=record["stored_at"], record_path=_record_path(identifier),
@@ -237,6 +249,18 @@ def _verify(directory, identifier):
     if not _typed_equal(output, saved_output):
         return _result(reason="OUTPUT_MISMATCH", **common), raw
     return _result(status="REPRODUCED", **common), raw
+
+
+def _verify_for_put(directory, identifier,
+                    expected_output=_NO_PRECOMPUTED_OUTPUT):
+    """Retry only a transient record read failure during put."""
+    for attempt in range(PUT_READ_ATTEMPTS):
+        checked, saved_raw = _verify(directory, identifier, expected_output)
+        if checked["reason_codes"] != ["RECORD_UNREADABLE"]:
+            return checked, saved_raw
+        if attempt + 1 < PUT_READ_ATTEMPTS:
+            time.sleep(PUT_READ_RETRY_SECONDS)
+    return checked, saved_raw
 
 
 def verify(bundle_sha256, home=None):
@@ -269,11 +293,19 @@ def _write_record(directory, identifier, record):
             stream.write(rendered)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, directory / f"{identifier}{RECORD_SUFFIX}")
+        try:
+            os.replace(temporary, directory / f"{identifier}{RECORD_SUFFIX}")
+        except Exception as error:
+            raise _ReplaceFailed() from error
     except BaseException:
         if descriptor is not None:
             try:
                 os.close(descriptor)
+            except OSError:
+                pass
+        if temporary is not None:
+            try:
+                temporary.unlink()
             except OSError:
                 pass
         raise
@@ -327,7 +359,7 @@ def put(input_path, home=None):
             read_only=False, reason="RECORD_CORRUPT",
             bundle_sha256=identifier, bundle_bytes=size)
     if exists:
-        checked, saved_raw = _verify(directory, identifier)
+        checked, saved_raw = _verify_for_put(directory, identifier)
         if checked["status"] != "REPRODUCED" or saved_raw != raw:
             return _result(
                 read_only=False, reason="RECORD_CORRUPT",
@@ -353,6 +385,18 @@ def put(input_path, home=None):
     }
     try:
         _write_record(directory, identifier, record)
+    except _ReplaceFailed:
+        checked, saved_raw = _verify_for_put(
+            directory, identifier, expected_output=output)
+        if checked["status"] == "REPRODUCED" and saved_raw == raw:
+            return _result(
+                read_only=False, status="NO_OP", bundle_sha256=identifier,
+                bundle_bytes=size, output=output,
+                stored_at=checked["stored_at"],
+                record_path=_record_path(identifier))
+        return _result(
+            read_only=False, reason="WRITE_FAILED",
+            bundle_sha256=identifier, bundle_bytes=size, output=output)
     except Exception:
         return _result(
             read_only=False, reason="WRITE_FAILED",

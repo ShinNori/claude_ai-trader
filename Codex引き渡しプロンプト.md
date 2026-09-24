@@ -67,41 +67,37 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 完了したら build-codex/README.md の末尾に「今回やったこと・テスト件数と結果・Claude に伝えたい点」を追記する。
 ```
 
-## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-20 09:11 第14回）
+## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-25 08:30 第14回 適用後）
 
-**発行時刻: 2026-09-20 09:11 JST（Claude / Claude Code。2026-09-25 見張り経由で公開）**
+**発行時刻: 2026-09-25 08:30 JST（Claude / Claude Code。見張り経由で公開）**
 ※ 自動連携は別枠（tools/automation/、auto チャネル）。この B には混ぜない。
-※ 未公開の理由: D13 の担当をデスクトップ側の Codex セッションに一本化したため（QUESTIONS.md 22:34 の解決を参照）。見張り経由とデスクトップの同時実行を避ける。
 
 ```
-今回の依頼: 第14回 put/verify 独立確認の受領、R14-01（多重並行 put の WRITE_FAILED と偽の RECORD_CORRUPT）の採否・修正、契約末尾の採否 2 節の一本化
+今回の依頼: R14-01 修正（Codex 案を Claude が移植済み）の受領確認と README 記録。製品変更は不要
 
-ユーザー指示の転記（2026-09-17 21:46 JST「使用率確認なしで実行」）: 開始時の使用率確認は行わず、確認できないことを理由に停止しない。
-上限管理はユーザーが Codex デスクトップ側で行う。
+ユーザー指示の転記（2026-09-17 21:46 JST「使用率確認なしで実行」／2026-09-25 08:30 JST「Claude が Codex の修正案を適用」）:
+開始時の使用率確認は行わない。08:20 の書込拒否は QUESTIONS.md で解決済み。Codex が TEMP に残した修正案を Claude がそのまま製品へ移植した。
 
-一次資料: build-codex/EVIDENCE_BUNDLE_STORE_INDEPENDENT_REVIEW.md（Claude 作成、2026-09-20 09:11 JST）。
-単一スレッド経路は契約（末尾の「優先補足」節）と一致し実装バグなし。対象 4 ファイルの sha256 は同報告に記載。
-新規: build-codex/tests/test_evidence_bundle_store_claude_contract.py（37 件、Claude 環境で 37 passed / 1.91 秒。並行不変条件は 5 回反復で安定）。
+反映済み（すべて Claude が実施、2026-09-25 08:30 JST）:
+- build-codex/aitrader/evidence_bundle_store.py ← TEMP の r14 案をバイト単位で移植（sha256 1e7cf927d9c29a37006ed14ae973469189cf5e2a65e30753335160d0e7c04249）
+- build-codex/tests/test_evidence_bundle_store_concurrency.py ← TEMP の並行試験案（sha256 78440f765414407fb6ebbd01a013f458f4bc3277701706befc0775b72418135c、7 件）
+- build-codex/tests/test_evidence_bundle_store.py ← test_replace_failure_leaves_only_ignored_tmp を「tmp を消す」期待へ更新し改名（Codex 自身が計画していた 1 件のみ）
+- Windows 実測（Claude、Codex 同梱 Python 3.12.14、-p no:cacheprovider、basetemp は Dropbox 外）: 関連 12 ファイル 230 passed / 5 skipped / 0 failed / 8.22 秒。
+  並行試験 7 件は 5 回反復で全通過。8 スレッド×40 回の負荷では 320 put すべて STORED/NO_OP、tmp 残留 0。
+- git: 上記を含む往復分をコミット済み（master）。
 
-1. R14-01（中）の採否と修正: 同じ束を 8 スレッドで同時 put すると 320 回中 WRITE_FAILED 27・RECORD_CORRUPT 2（最終記録は常に健全）。
-   原因は Windows の os.replace が置換先を開かれている間 PermissionError になること、既存確認の安全読取が置換と重なると「観測中に変化」で
-   失敗し put が一律 RECORD_CORRUPT に写すこと、失敗時に自分の一時ファイルを消さないこと。
-   推奨 (a)+(b): os.replace 失敗時は既存記録を再読し健全かつ投入バイト一致なら NO_OP、既存確認の読取失敗は短い間隔で数回だけ再読してから
-   RECORD_CORRUPT。新語彙・新保証は足さず API は最大 1 回のまま。不採用なら (c) 契約へ明記し既存並行試験の期待を合わせる。
-   修正する場合は 8 スレッド以上の並行試験を追加し、結果 ⊆ {STORED, NO_OP} を固定する。
-2. 契約案末尾の採否 2 節（「Codex 採否・実装契約」と「Codex採否・優先補足」）を一本化する。実装は後者に従っている。
-   前者に「後者に置換済み」と明記するか削除し、優先節を 1 つにする。
-3. 関連試験の Windows 実測 1 回（bundle store 3 本＋v2 関連）。passed/skipped/failed/秒/環境を記録。全体は製品を変えた場合のみ Codex の判断で 1 回。
-4. README 末尾に短く記録し、Claude 向け次回 B を必須 3 項目様式で保存する。修正した場合、Claude に求めるのは並行修正の重要差分 1 点に絞る。
+1. 上記の移植が自分の案と同一であることを sha256 で確認し、受領を README 末尾に短く記録する（Claude 実測の転記は件数・秒・環境のみ）。
+2. 契約文書（EVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md の優先節）に R14-01 の採用内容を 3 行以内で追記する（再読の再試行 3 回・置換失敗時の NO_OP 判定・自 tmp の削除）。
+3. 任意: 全体試験を 1 回（製品を変えたため。Codex の判断）。
+4. Claude 向け次回 B を必須 3 項目様式で保存・公開する。次の作業がなければ「引き渡し不要」。
 
-編集範囲は build-codex/aitrader/evidence_bundle_store.py（R14-01 を修正する場合のみ）、build-codex/tests/（新規または自分の既存 2 本）、
-契約文書、README、Claude_Opusキャッチボール.md、Codex引き渡しプロンプト.md の該当節。製品 v1/v2 既存コード・共通仕様・合成データ・examples・
-Claude の新規試験は変更しない。既存試験の削除・skip・xfail・条件緩和は禁止。保存先は Dropbox 外のみ。実API・実売買審査・LINE・証券接続・発注は行わない。
+編集範囲は README、契約文書、Claude_Opusキャッチボール.md、Codex引き渡しプロンプト.md の該当節。製品・試験・examples・共通仕様は変更しない。
+既存試験の削除・skip・xfail・条件緩和は禁止。実API・実売買審査・LINE・証券接続・発注は行わない。
 
-完了条件: 1 の採否（修正時は並行試験の追加）、2 の一本化、3 の実測値、4 の保存。
+完了条件: 1〜2 の記録、4 の保存と公開。
 ```
 
-<!-- handoff-ready: 1a2537ba043e71d25509c240b8165b9851d62bdcdb811249e225f711f929f720 -->
+<!-- handoff-ready: 5d99c6feb2fb95b7a1212fea012106b70dfaa2e403932e366478c33959953188 -->
 
 ---
 
@@ -149,5 +145,6 @@ Claude の新規試験は変更しない。既存試験の削除・skip・xfail�
 | 2026-09-17 21:56 | （Claude）第13回: v2 CLI 2 本の読取境界・固定 stderr・終了コードの独立確認 | CLI_V2_INDEPENDENT_REVIEW.md。実装バグ 0。新規反証 30 件（test_history_v2_cli_claude_contract.py）30 passed。R13-01（--help、低）の採否を Codex へ依頼（公開） |
 | 2026-09-17 22:28 | （Claude）D13-01〜03 保存契約案の作成と Codex への採否・実装依頼 | EVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md（3 判断とも採用案を固定、反証表 30 件）。Codex へ実装可能性確認・実装・実測を依頼（公開） |
 | 2026-09-20 09:11 | （Claude）第14回: 人工束 put/verify の独立確認（原子性境界・hash 照合・API 呼出回数） | EVIDENCE_BUNDLE_STORE_INDEPENDENT_REVIEW.md。単一スレッド経路はバグ 0。R14-01（中: 多重並行 put で WRITE_FAILED 8.4%・偽 RECORD_CORRUPT 0.6%、データ破損 0）。新規反証 37 件 37 passed。B は保存のみ・未公開（D13 はデスクトップ側に一本化） |
+| 2026-09-25 08:30 | （Claude）R14-01: Codex の修正案を製品へ移植（ユーザー承認の例外）・並行試験追加・Windows 実測 230 passed | Codex へ受領・記録を依頼（公開） |
 
 ※ Cowork（このセッション）からの `tools/run_codex_build.*` 自動起動は、Anthropic 側のネットワーク方針で OpenAI に到達できず失敗する（2026-09-08 確認）。自動起動は則光さんの PC 上の Claude Code から行う。往復の自動化は `tools/pingpong.ps1`（`tools/PINGPONG.md` 参照、2026-09-09 追加）。
