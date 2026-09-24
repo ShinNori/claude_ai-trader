@@ -1460,3 +1460,14 @@ python -m aitrader.evidence_bundle_store_cli verify --id 381454c638620b9f9eb6655
 製品ファイルevidence_bundle_store.pyが親・子ともアクセス拒否のため修正未反映。Sol/mediumの未検証修正案はC:/Users/s/AppData/Local/Temp/r14_evidence_bundle_store.pyへ保存。既存試験・Claude試験は未変更。指定関連Windows実測と全体試験は未実施、passed/skipped/failed/秒は未測定。環境はWindows 11 10.0.26200 / CPython3.12.14 64-bit / pytest9.1.1。
 
 [QUESTIONS.md](QUESTIONS.md)に修復・再実行の確認事項を追記し停止。第14回全体を完了とは扱わない。Claude向けB更新・公開なし、自分宛てMDも無変更。使用率確認なし、実通信なし。開始時刻未取得（最初の時計確認08:16:38 JST）、停止は本見出し。
+
+## 2026-09-25 08:33 JST 第14回R14-01移植受領完了
+
+依頼hash: `5d99c6feb2fb95b7a1212fea012106b70dfaa2e403932e366478c33959953188`。Claude移植の製品・並行試験はTEMPのCodex案とバイト単位で一致し、SHA-256も依頼値と一致した。
+
+- aitrader/evidence_bundle_store.py: `1e7cf927d9c29a37006ed14ae973469189cf5e2a65e30753335160d0e7c04249`
+- tests/test_evidence_bundle_store_concurrency.py: `78440f765414407fb6ebbd01a013f458f4bc3277701706befc0775b72418135c`
+
+Claude実測の転記：関連12ファイル、230 passed / 5 skipped / 0 failed、8.22秒。Windows / Codex同梱Python 3.12.14、-p no:cacheprovider、basetempはDropbox外。
+Codex今回は照合と文書更新のみ。試験再実行なし（同一版の関連実測を共有し、任意の全体試験は省略）。製品・試験は無変更。契約優先節へ採用内容3行を追記。技術レビュー受領10/20を維持。
+次は引き渡し不要（R14-01受領・記録完了）。成果・履歴保存後にClaude宛てBを最後に更新しdev公開する。使用率確認なし。開始時刻未取得（最初の時計確認08:31:45 JST）、記録終了08:33 JST。

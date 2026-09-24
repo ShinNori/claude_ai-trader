@@ -63,43 +63,26 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: 人工束put/verifyの重要差分（原子性境界・hash照合・API呼出回数）の独立確認1点
-
-TEAM_WORKFLOW.mdの担当/上限を優先。旧Aのops修正・旧CLI全件確認を実施しない。通常Sonnet、子は必要時Sonnet層のみ最大3、Opus並列禁止。モデル切替2回まで。再実測は指摘に直結する1点のみ、追加反証30件目安、仮説のあるfuzzだけ合計3000束以内。製品実装はCodex、Claudeは重要差分確認と新規反証のみ。
+今回の依頼: 引き渡し不要（R14-01受領・記録完了）
 
 【変更ファイル一覧】
-
-| 相対パス | bytes | 更新時刻 | 目的 |
-|---|---:|---|---|
-| build-codex/aitrader/evidence_bundle_store.py | 13847 | 2026-09-17T22:38:08+09:00 | 新規製品/試験 |
-| build-codex/aitrader/evidence_bundle_store_cli.py | 1397 | 2026-09-17T22:33:04+09:00 | 新規製品/試験 |
-| build-codex/tests/test_evidence_bundle_store.py | 13664 | 2026-09-17T22:38:11+09:00 | 新規製品/試験 |
-| build-codex/tests/test_evidence_bundle_store_cli.py | 2605 | 2026-09-17T22:35:47+09:00 | 新規製品/試験 |
-| build-codex/EVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md | 25317 | 2026-09-17T22:33:54+09:00 | Codex採否補足 |
-| build-codex/README.md | 197712 | 2026-09-17T22:40:24+09:00 | 最新記録のみ・全読不要 |
-| build-codex/Codex継続プロンプト.md | 53823 | 2026-09-17T22:40:24+09:00 | 最新記録のみ・全読不要 |
-| build-codex/STRICT_EVIDENCE_STORAGE_PLAN.md | 9226 | 2026-09-17T22:40:24+09:00 | 最新記録のみ・全読不要 |
-| build-codex/COMPLETION_ROADMAP.md | 8434 | 2026-09-17T22:40:24+09:00 | 最新記録のみ・全読不要 |
-
-B自身は除外。依存参照はpacket_cli.pyの_mapping/_is_link/_unique_object、db.pyのdefault_home/_runtime_path_guard、history_validity_binding_v2.pyの公開APIのみ。既存ファイルは変更なし。
+- build-codex/README.md：移植受領、2件のSHA-256、Claude実測とCodex照合の区別を追記。
+- build-codex/EVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md：優先節にR14-01採用内容を3行追記。
+- build-codex/Claude_Opusキャッチボール.md：開始・終了時刻と完了履歴を追記。
+本B自身を除き以上。製品・試験・examples・共通仕様・QUESTIONS・Codex宛てMDは無変更。
 
 【Codex 実測】
-
-2026-09-17、Sol/high、cwd=build-codex。Windows/CPython3.12.14、PYTHONDONTWRITEBYTECODE=1。最終関連186 passed/5 skipped/0 failed/7.98秒。新規2本だけの最終結果47 passed/1 skipped/0 failed/1.59秒は関連結果に内包し、合算しない。5skipはWindows symlink作成権限不足（新規1・既存4）。新規32関数のparametrize展開が48ケースであり、30目安超過は入力/ID/記録/型差の境界固定のため。全体試験・fuzz・親の再実行なし。
-```text
-python -m pytest -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-ebs-final-related-8c9e07c41e9944bca0cc17cff3bf2007 tests/test_evidence_bundle_store.py tests/test_evidence_bundle_store_cli.py tests/test_evidence_history_fixture_v2.py tests/test_history_validity_binding_v2.py tests/test_history_validity_binding_v2_claude_contract.py tests/test_history_v2_clis.py tests/test_evidence_history_fixture_v2_cli.py tests/test_history_validity_binding_v2_cli.py tests/test_history_v2_cli_contract_additions.py tests/test_history_v2_cli_claude_contract.py -q
-```
-Python=C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。
+製品・並行試験のSHA-256は依頼値と一致し、TEMPのCodex原案とバイト単位でも一致。値はREADME末尾参照。
+今回は試験未実施。任意の全体試験は同一版の関連実測を共有するため省略。
+Claude実測の転記：関連12ファイル、230 passed / 5 skipped / 0 failed、8.22秒。Windows / Codex同梱Python 3.12.14、-p no:cacheprovider、basetempはDropbox外。
 
 【今回 Claude に求める判断】
+なし。R14-01の移植受領・契約追記は完了。追加レビュー・製品変更・試験再実行の依頼はない。旧Aおよび過去Bを新規作業として実行しない。
 
-1. put/verifyの原子性境界・raw hash照合・API最大1回（早期拒否0回）が、契約末尾のCodex採否と一致するか。snapshotと記録tmpの失敗分類、並行同ID投入、NO_OP非更新、破損非上書き、output型差を含む全キー比較だけに限定する。電源断保証/真性証明は契約対象外。採否補足が草案と衝突する場合は末尾優先。
+依頼hash: 5d99c6feb2fb95b7a1212fea012106b70dfaa2e403932e366478c33959953188
+記録終了2026-09-25 08:33 JST。技術レビュー受領10/20維持。使用率確認なし。
 
-所見はbuild-codex/EVIDENCE_BUNDLE_STORE_INDEPENDENT_REVIEW.mdへ保存。必要な追加反証は新規test_*_claude_contract.pyのみ。製品/既存試験/共通仕様/examplesを変更せず、必要修正と判断だけCodex宛てBへ返す。実取込・増分DB・一覧/削除・日次接続・全件レビューは今回の検証範囲外。
-
-更新・終了：2026-09-17 22:40:24 JST。開始22:29:20 JST。技術レビュー受領9/20維持。使用率確認なし。最新Codex宛てBに従い保存後dev公開する。
-
-<!-- handoff-ready: d0d39bd8d22550403f062674da09d839fb866da75e7849b2eb56485e72fe44d9 -->
+<!-- handoff-ready: c439587178f4f4ae3cddac3b4a20e4773eb34a42d0b1d5f18546ab63034c4823 -->
 
 ## 過去のB（実行対象外）
 
