@@ -4,3 +4,6 @@ __pycache__/
 .pytest_cache/
 results/*/trades.csv
 results/*/equity.csv
+ledger.sqlite
+outbox/
+receipts/
