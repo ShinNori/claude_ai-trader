@@ -81,8 +81,15 @@ def evaluate(p: Proposal, verdicts: list[Verdict], now: datetime, ledger_view, l
     ne = ev.get("next_earnings_date", "UNKNOWN")
     mr = ev.get("margin_regulated", "UNKNOWN")
     exec_day = next_business_day(p.as_of)
-    if ne == "UNKNOWN":
+    if isinstance(ne, str) and ne != "UNKNOWN":
+        try:
+            ne = date.fromisoformat(ne)
+        except ValueError:
+            ne = "UNKNOWN"
+    if ne == "UNKNOWN" or ne is None and "next_earnings_date" not in ev:
         reasons.append("次回決算日が UNKNOWN（保留）")
+    elif ne is not None and not isinstance(ne, date):
+        reasons.append(f"次回決算日の形式が不正: {ne!r}")
     elif isinstance(ne, date) and abs((ne - exec_day).days) <= limits.earnings_blackout_days:
         reasons.append(f"決算日 {ne} が執行日 {exec_day} の ±{limits.earnings_blackout_days} 日以内")
     if mr is True:

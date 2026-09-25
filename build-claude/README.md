@@ -87,3 +87,56 @@ results/<strategy>_<version>/  summary.json / report.html（trades.csv, equity.c
 - J-Quants の実データ取り込みは未検証（トークン未取得）。列名は v1 ドキュメントの想定。`fetch` 実行後に `signals` が動けば OK
 - ウォークフォワード・感度分析・年別集計以外の検証はフェーズ1の範囲外（戦略カタログ §1.3〜1.4）
 - フェーズ2: 判定パケット生成 → Claude/Codex 審査 → 合議 → LINE 通知（設計書 5〜7章、Codex の連携仕様案を反映）
+
+---
+
+## Claude 単独ビルド 進捗（フェーズ2、2026-09-26 JST）
+
+Codex との並行開発と速度を比べるため、フェーズ2（判定パケット → 二重審査 → 通知ゲート → 台帳 → 通知キュー → 日次ランナー）を **Claude Code だけ**で `build-claude/` に実装した。common/・ops/・build-codex/ は触っていない。LLM 呼び出し・LINE 送信・証券接続・発注は含まない（通知はローカル outbox の JSON、発注は人間）。
+
+### 追加モジュール
+
+```
+aitrader/
+├─ models.py   Proposal / Verdict / Limits / GateResult / LedgerView、packet_hash（共通仕様 §5 の正規化）、reserve_amount
+├─ packet.py   build_proposals / render_packet（呼値丸め、翌営業日 08:59 JST 期限、UNKNOWN の明示、reference 隔離）
+├─ judges.py   AI 応答の正規化（数量・価格を変えた応答や形式不正は INVALID）、MockJudge / CommandJudge / run_judges
+├─ gate.py     evaluate()（合議 2 件一致・期限・契約・現物・余力・イベント・ハードリミット、不許可理由を全列挙）
+├─ ledger.py   SQLite イベントソーシング台帳（通知状態・実取引状態・予約額・冪等報告・訂正・期限切れ）
+├─ notify.py   通知文面と Outbox（{home}/outbox/{as_of}/{proposal_id}.json）
+└─ runner.py   run_daily: signals → packets → judges → gate → ledger → outbox → receipt（{home}/receipts/{as_of}.json）
+tests/         packet 50 / gate 66 / ledger 26 / judges+notify 18 / runner 6
+```
+
+### 使い方
+
+```bash
+python -m aitrader packets --strategy margin_bucket_long --as-of 2025-06-06 [--events events.json] [--lot-sizes lots.json]
+python -m aitrader ledger-init --cash 3000000 [--positions positions.json]
+python -m aitrader daily --strategy margin_bucket_long --as-of 2025-06-06 --events events.json            # dry-run（台帳に書かない）
+python -m aitrader daily ... --execute                                                                     # 台帳に CREATED→APPROVED→SENT を記録し outbox へ
+python -m aitrader daily ... --now 2025-06-09T08:30:00 --execute                                           # リハーサル用の現在時刻上書き
+python -m aitrader daily ... --judge cmd --claude-cmd "claude -p" --codex-cmd "codex exec"                 # 実 CLI を審査役に（標準入力にパケット JSON）
+```
+
+events.json を渡さない銘柄は `UNKNOWN` になりゲートで保留される（安全側）。
+
+### 検証記録
+
+| 項目 | 結果 |
+|---|---|
+| 自前テスト `python -m pytest tests -q` | **166 passed**（1.5 秒） |
+| 共通契約テスト（`common/tests/phase2/test_packet.py`, `test_gate.py` を build-claude に向けて実行） | **94 passed**（ハッシュは Codex 実装と同一規則） |
+| 合成データ E2E（seed=42, as_of=2025-06-06, 現金 300 万円, `--now 2025-06-09T08:30`） | 候補 20 → パケット 8（2 件は予算不足で除外）→ **送信 2 件**、6 件は「本日の新規通知 2 件が上限」で遮断。台帳 reserved 434,868 円 |
+| 過去日付を `--now` なしで実行 | 全件「期限切れ」で遮断（意図どおり） |
+
+### 速度比較（Claude 単独 vs Claude/Codex 並行）
+
+| 観点 | Claude 単独（本節） | Claude/Codex 並行（build-codex + ops） |
+|---|---|---|
+| フェーズ2 の着手→動く一式 | **約 9 分**（23:14→23:23 UTC。中核 3 モジュールを本体が書き、台帳・審査/通知・ランナー/CLI・境界試験をサブエージェント 4 体に並列分担） | 2026-09-08 着手、以後 R01〜R19 の往復と v031〜v041 のレビュー（約 2.5 週間、往復ごとに人間の中継） |
+| コード量 | 約 2,270 行（実装 7 ファイル + テスト 5 ファイル） | build-codex/aitrader 約 60 ファイル + ops/ + 契約文書 |
+| 独立性 | 実装者と試験者を別エージェントに分けた（試験側はバグ 0 件・注意点 1 件を報告し、注意点はゲートに反映） | Codex が敵対テストを先に書き Claude が実装する分担 |
+| 範囲の差 | 通知ゲートまでの最小構成。CSV 照合（`import_csv_fills`）、任意時点の残高再計算、ランナー復旧、証跡バンドルは未実装 | ランナー復旧・証跡バンドル・厳格入力検証・運用状況契約まで到達 |
+
+解釈: 速度差の大部分は「人間を介した往復の回数」と「契約文書の往復」から来ている。単独ビルドは契約を自分で決めて即実装できる代わりに、第三者の敵対的検証が弱い（今回はサブエージェントで代替）。同じ範囲まで到達させる場合の差は未測定。
