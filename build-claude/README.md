@@ -104,8 +104,9 @@ aitrader/
 ├─ gate.py     evaluate()（合議 2 件一致・期限・契約・現物・余力・イベント・ハードリミット、不許可理由を全列挙）
 ├─ ledger.py   SQLite イベントソーシング台帳（通知状態・実取引状態・予約額・冪等報告・訂正・期限切れ）
 ├─ notify.py   通知文面と Outbox（{home}/outbox/{as_of}/{proposal_id}.json）
+├─ csvfills.py 証券会社 CSV（UTF-8/CP932、日本語ヘッダ）→ CsvRow
 └─ runner.py   run_daily: signals → packets → judges → gate → ledger → outbox → receipt（{home}/receipts/{as_of}.json）
-tests/         packet 50 / gate 66 / ledger 26 / judges+notify 18 / runner 6
+tests/         packet 50 / gate 66 / ledger 26+11+23（CSV 照合と敵対試験）/ judges+notify 18 / runner 6 / CLI 8
 ```
 
 ### 使い方
@@ -117,6 +118,10 @@ python -m aitrader daily --strategy margin_bucket_long --as-of 2025-06-06 --even
 python -m aitrader daily ... --execute                                                                     # 台帳に CREATED→APPROVED→SENT を記録し outbox へ
 python -m aitrader daily ... --now 2025-06-09T08:30:00 --execute                                           # リハーサル用の現在時刻上書き
 python -m aitrader daily ... --judge cmd --claude-cmd "claude -p" --codex-cmd "codex exec"                 # 実 CLI を審査役に（標準入力にパケット JSON）
+python -m aitrader ledger-report --proposal-id A1-... --kind FILLED --qty 100 --price 2020 --broker-order-id B1  # LINE 相当の手動報告
+python -m aitrader ledger-import-csv --file fills.csv                                                      # 証券会社 CSV の照合取込（曖昧な行は pending）
+python -m aitrader ledger-status                                                                           # 現金・予約・保有・未確認・pending
+python -m aitrader ledger-resolve --event-id E --apply --proposal-id P   |   --discard                     # pending を人間が解決
 ```
 
 events.json を渡さない銘柄は `UNKNOWN` になりゲートで保留される（安全側）。
@@ -125,8 +130,8 @@ events.json を渡さない銘柄は `UNKNOWN` になりゲートで保留され
 
 | 項目 | 結果 |
 |---|---|
-| 自前テスト `python -m pytest tests -q` | **166 passed**（1.5 秒） |
-| 共通契約テスト（`common/tests/phase2/test_packet.py`, `test_gate.py` を build-claude に向けて実行） | **94 passed**（ハッシュは Codex 実装と同一規則） |
+| 自前テスト `python -m pytest tests -q` | **208 passed**（2.1 秒。CSV 照合追加後） |
+| 共通契約テスト（`common/tests/phase2/` の packet / gate / ledger を build-claude に向けて実行） | **124 passed**（packet 34・gate 60・ledger 30。ハッシュは Codex 実装と同一規則） |
 | 合成データ E2E（seed=42, as_of=2025-06-06, 現金 300 万円, `--now 2025-06-09T08:30`） | 候補 20 → パケット 8（2 件は予算不足で除外）→ **送信 2 件**、6 件は「本日の新規通知 2 件が上限」で遮断。台帳 reserved 434,868 円 |
 | 過去日付を `--now` なしで実行 | 全件「期限切れ」で遮断（意図どおり） |
 
@@ -137,6 +142,20 @@ events.json を渡さない銘柄は `UNKNOWN` になりゲートで保留され
 | フェーズ2 の着手→動く一式 | **約 9 分**（23:14→23:23 UTC。中核 3 モジュールを本体が書き、台帳・審査/通知・ランナー/CLI・境界試験をサブエージェント 4 体に並列分担） | 2026-09-08 着手、以後 R01〜R19 の往復と v031〜v041 のレビュー（約 2.5 週間、往復ごとに人間の中継） |
 | コード量 | 約 2,270 行（実装 7 ファイル + テスト 5 ファイル） | build-codex/aitrader 約 60 ファイル + ops/ + 契約文書 |
 | 独立性 | 実装者と試験者を別エージェントに分けた（試験側はバグ 0 件・注意点 1 件を報告し、注意点はゲートに反映） | Codex が敵対テストを先に書き Claude が実装する分担 |
-| 範囲の差 | 通知ゲートまでの最小構成。CSV 照合（`import_csv_fills`）、任意時点の残高再計算、ランナー復旧、証跡バンドルは未実装 | ランナー復旧・証跡バンドル・厳格入力検証・運用状況契約まで到達 |
+| 範囲の差 | 通知ゲート + 台帳 + CSV 照合（`import_csv_fills` / `pending_rows` / `resolve_pending` / `balance_at`）。ランナー復旧、証跡バンドルは未実装 | ランナー復旧・証跡バンドル・厳格入力検証・運用状況契約まで到達 |
 
 解釈: 速度差の大部分は「人間を介した往復の回数」と「契約文書の往復」から来ている。単独ビルドは契約を自分で決めて即実装できる代わりに、第三者の敵対的検証が弱い（今回はサブエージェントで代替）。同じ範囲まで到達させる場合の差は未測定。
+
+### 追記: CSV 照合（2026-09-27 JST、同じやり方で約 4 分）
+
+台帳に CSV 照合を追加した（実装: opus、敵対試験: sonnet、CLI: sonnet の 3 体並列。23:11→23:15 UTC）。
+
+| 論点 | 本実装 |
+|---|---|
+| 冪等 | 同じ `event_id` は 2 回目以降 skipped。ERROR / DISCARDED になった id も再取込されない（修正後は新しい id で） |
+| LINE と CSV の重複 | 同一 code+side の既存約定と「同一証券ID かつ 同数量・同単価（時刻があれば時刻も）」なら重複。到着順が逆でも 1 回だけ計上 |
+| 曖昧一致 | 証券IDが無く既存約定と同数量・同単価の行は pending（自動計上しない）。`pending_rows()` に理由付きで残り、`resolve_pending(APPLY/DISCARD)` で人間が解決 |
+| 紐付け | 明示 `proposal_id` は code+side が一致しなければ pending。省略時は同 code+side の未決済通知がちょうど 1 件のときだけ紐付け |
+| 期限切れ通知への CSV | 適用する（EXPIRED ≠ 取消） |
+| `balance_at(at)` | 各保存時点の残高要約（cash / reserved / positions）を ledger_events に記録し、`at` 以前の最新要約を返す。約定ロジックの再実行はしない |
+| 敵対試験 | 23 件（REJECTED 通知への CSV、保有なし SELL、qty 0/負、naive datetime、同一呼び出し内の重複 id、残数量超過、同一証券IDの別銘柄、pending→LINE→APPLY の二重計上防止、余力負）。実装バグ 0 件 |
