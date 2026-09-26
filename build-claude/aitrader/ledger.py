@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS notices (
 CREATE TABLE IF NOT EXISTS positions (
   code TEXT PRIMARY KEY, data TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS csv_ingest (
+  event_id TEXT PRIMARY KEY, status TEXT NOT NULL, reason TEXT,
+  payload_json TEXT NOT NULL, proposal_id TEXT, at TEXT
+);
 """
 
 
@@ -63,6 +67,17 @@ class ReportResult:
     ignored_reason: str | None = None
     trade_state: str | None = None
     warnings: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ImportResult:
+    applied: list[str] = field(default_factory=list)
+    skipped: list[str] = field(default_factory=list)
+    pending: list[str] = field(default_factory=list)
+    errors: dict[str, str] = field(default_factory=dict)
+
+
+AMBIGUOUS = "既存約定と一致する可能性（証券IDなし）"
 
 
 def _iso(v):
@@ -119,12 +134,20 @@ class Ledger:
         }
         return st
 
-    def _save(self, st: dict, events: list[dict]):
+    def _summary(self, st) -> dict:
+        return {"cash": st["cash"], "reserved": self._reserved(st),
+                "positions": {k: {"qty": v["qty"], "cost": v["cost"]} for k, v in st["positions"].items() if v["qty"] > 0}}
+
+    def _save(self, st: dict, events: list[dict], csv_rows: list[tuple] = ()):
         """state 全体と追記イベントを 1 トランザクションで書く。"""
         c = self._conn
         now = datetime.now(JST).isoformat()
+        if events:
+            events[-1]["state_after"] = self._summary(st)
         try:
             c.execute("BEGIN IMMEDIATE")
+            for r in csv_rows:
+                c.execute("INSERT OR REPLACE INTO csv_ingest VALUES (?,?,?,?,?,?)", r)
             for e in events:
                 c.execute(
                     "INSERT INTO ledger_events(kind, event_id, proposal_id, at, recorded_at, payload) VALUES (?,?,?,?,?,?)",
@@ -257,7 +280,13 @@ class Ledger:
                     return self._ignore(st, ev, n, f"状態 {n['trade_state']} では ORDERED を無視")
                 n["trade_state"] = "ORDERED"
             elif kind in ("PARTIAL", "FILLED"):
-                self._apply_fill(st, n, eid, kind, qty, price, fee, warnings)
+                dup = self._find_dup(st, n["proposal"]["code"], n["proposal"]["side"],
+                                     getattr(ev, "broker_order_id", None), qty, price, getattr(ev, "at", None),
+                                     strict=True)
+                if dup:
+                    return self._ignore(st, ev, n, f"既存約定 {dup} と同一（重複）", duplicate=True)
+                self._apply_fill(st, n, eid, kind, qty, price, fee, warnings, getattr(ev, "source", None),
+                                 getattr(ev, "broker_order_id", None), getattr(ev, "at", None))
             elif kind == "CANCELLED":
                 if n["trade_state"] not in OPEN_TRADE:
                     raise _Refused(f"状態 {n['trade_state']} は取消できない")
@@ -304,13 +333,44 @@ class Ledger:
         self._save(st, [rec] + extra)
         return ReportResult(eid, True, trade_state=n["trade_state"], warnings=warnings)
 
-    def _ignore(self, st, ev, n, reason) -> ReportResult:
+    def _ignore(self, st, ev, n, reason, duplicate=False) -> ReportResult:
         eid = ev.event_id
         self._save(st, [{"kind": "REPORT_IGNORED", "event_id": eid, "proposal_id": ev.proposal_id,
                          "at": getattr(ev, "at", None), "report_kind": ev.kind, "reason": reason}])
-        return ReportResult(eid, False, ignored_reason=reason, trade_state=n["trade_state"])
+        return ReportResult(eid, False, ignored_reason=reason, trade_state=n["trade_state"], duplicate=duplicate)
 
-    def _apply_fill(self, st, n, eid, kind, qty, price, fee, warnings):
+    @staticmethod
+    def _find_dup(st, code, side, broker, qty, price, at, strict):
+        """同一 code+side の適用済み約定から重複を探す。
+        証券ID両方あり: 一致なら重複。片方なし: qty/price(/at 双方ありなら at)一致で重複候補。
+        strict=True（LINE 後着）は候補も重複扱い、False（CSV）は呼び出し側で pending にする。"""
+        at_s = _iso(at)
+        for n in st["notices"].values():
+            p = n["proposal"]
+            if p["code"] != code or p["side"] != side:
+                continue
+            for f in n["fills"]:
+                if f["reversed"]:
+                    continue
+                fb = f.get("broker_order_id")
+                if broker and fb and broker != fb:
+                    continue
+                if f["qty"] != qty or _dec(f["price"]) != _dec(price):
+                    continue  # 同一注文の別の部分約定は重複ではない
+                fat = f.get("at")
+                if at_s and fat and _as_jst(_dt(fat)) != _as_jst(_dt(at_s)):
+                    continue
+                if broker and fb:
+                    if strict and f.get("source") != "csv":
+                        continue  # LINE 同士は event_id のみで冪等判定（従来動作）
+                    return f["event_id"]
+                if True:  # 証券IDが片方なし
+                    if strict and not (f.get("source") == "csv"):
+                        continue  # LINE 同士の証券IDなし一致は従来通り別約定
+                    return ("?" if not strict else "") + f["event_id"]
+        return None
+
+    def _apply_fill(self, st, n, eid, kind, qty, price, fee, warnings, source=None, broker=None, at=None):
         p = n["proposal"]
         if n["trade_state"] not in OPEN_TRADE:
             raise _Refused(f"状態 {n['trade_state']} に約定は計上できない")
@@ -334,7 +394,8 @@ class Ledger:
             pos["qty"] -= qty
             st["cash"] += _yen(gross - fee)
         n["filled_qty"] += qty
-        n["fills"].append({"event_id": eid, "qty": qty, "price": str(price), "fee": str(fee), "reversed": False})
+        n["fills"].append({"event_id": eid, "qty": qty, "price": str(price), "fee": str(fee), "reversed": False,
+                         "source": source, "broker_order_id": broker or None, "at": _iso(at)})
         if n["filled_qty"] == p["qty"]:
             n["trade_state"] = "FILLED"
         else:
@@ -363,6 +424,156 @@ class Ledger:
         if n["trade_state"] == "FILLED" and n["filled_qty"] < p["qty"]:
             n["trade_state"] = "PARTIAL" if n["filled_qty"] else "ORDERED"
         n["reserved"] = self._reserve_for(st, n)
+
+    # ------------------------------------------------------------ CSV
+    def _csv_done(self, eid) -> bool:
+        return bool(self._conn.execute("SELECT 1 FROM csv_ingest WHERE event_id=?", (eid,)).fetchone()
+                    or self._conn.execute("SELECT 1 FROM ledger_events WHERE event_id=?", (eid,)).fetchone())
+
+    @staticmethod
+    def _row_payload(r) -> dict:
+        keys = ("event_id", "proposal_id", "code", "side", "qty", "price", "fee", "at", "source", "broker_order_id")
+        d = {k: _iso(getattr(r, k, None)) for k in keys}
+        d["source"] = d["source"] or "csv"
+        return d
+
+    def _csv_record(self, st, d, status, reason, pid, events):
+        eid = d["event_id"]
+        ev = {"kind": "CSV_" + status, "event_id": eid, "proposal_id": pid, "at": d.get("at"),
+              "row": d, "reason": reason}
+        row = (eid, status, reason, json.dumps(d, ensure_ascii=False, sort_keys=True), pid, d.get("at"))
+        self._save(st, events + [ev], [row])
+
+    def _csv_apply(self, st, n, d, warnings):
+        qty, price, fee = int(d["qty"]), _dec(d["price"]), _dec(d["fee"] or 0)
+        if qty < 0 or price < 0 or fee < 0:
+            raise _Refused("数量・単価・手数料は負にできない")
+        if n["trade_state"] == "UNCONFIRMED":
+            n["trade_state"] = "ORDERED"
+        self._apply_fill(st, n, d["event_id"], "PARTIAL", qty, price, fee, warnings, "csv",
+                         d.get("broker_order_id"), d.get("at"))
+        if st["cash"] - self._reserved(st) < 0:
+            raise _Refused("余力が負になる約定は拒否")
+
+    def import_csv_fills(self, rows: list) -> ImportResult:
+        self._require()
+        res = ImportResult()
+        for r in rows:
+            eid = getattr(r, "event_id", None)
+            if not eid:
+                res.errors[str(eid)] = "event_id がない"
+                continue
+            if self._csv_done(eid):
+                res.skipped.append(eid)
+                continue
+            d = self._row_payload(r)
+            st = self._load()
+            try:
+                qty, price = int(d["qty"]), _dec(d["price"])
+            except Exception as e:  # noqa: BLE001
+                res.errors[eid] = f"数値不正: {e}"
+                self._csv_record(st, d, "ERROR", res.errors[eid], None, [])
+                continue
+            dup = self._find_dup(st, d["code"], d["side"], d.get("broker_order_id"), qty, price,
+                                 d.get("at"), strict=False)
+            if dup and not dup.startswith("?"):
+                res.skipped.append(eid)
+                self._csv_record(st, d, "SKIPPED", f"既存約定 {dup} と同一（証券ID一致）", None, [])
+                continue
+            if dup:
+                res.pending.append(eid)
+                self._csv_record(st, d, "PENDING", AMBIGUOUS, None, [])
+                continue
+            pid = d.get("proposal_id")
+            n, reason = None, None
+            if pid:
+                n = st["notices"].get(pid)
+                if n is None:
+                    reason = f"未知の proposal_id: {pid}"
+                elif n["proposal"]["code"] != d["code"] or n["proposal"]["side"] != d["side"]:
+                    reason, n = f"proposal_id {pid} と銘柄・売買区分が不一致", None
+            else:
+                cands = [x for x in st["notices"].values()
+                         if x["proposal"]["code"] == d["code"] and x["proposal"]["side"] == d["side"]
+                         and x["trade_state"] in OPEN_TRADE and x["notice_state"] != "REJECTED"]
+                if len(cands) == 1:
+                    n = cands[0]
+                else:
+                    reason = f"紐付け候補が {len(cands)} 件"
+            if n is None:
+                res.pending.append(eid)
+                self._csv_record(st, d, "PENDING", reason, pid, [])
+                continue
+            warnings: list[str] = []
+            try:
+                self._csv_apply(st, n, d, warnings)
+            except _Refused as e:
+                res.errors[eid] = str(e)
+                self._csv_record(self._load(), d, "ERROR", str(e), n["proposal_id"], [])
+                continue
+            d["proposal_id"] = n["proposal_id"]
+            res.applied.append(eid)
+            self._csv_record(st, d, "APPLIED", None, n["proposal_id"], [])
+        return res
+
+    def pending_rows(self) -> dict[str, dict]:
+        out = {}
+        for eid, reason, pj in self._conn.execute(
+                "SELECT event_id, reason, payload_json FROM csv_ingest WHERE status='PENDING'"):
+            out[eid] = dict(json.loads(pj), reason=reason)
+        return out
+
+    def resolve_pending(self, event_id: str, proposal_id: str | None, at: datetime,
+                        action: str = "APPLY") -> ReportResult | None:
+        self._require()
+        r = self._conn.execute("SELECT status, payload_json FROM csv_ingest WHERE event_id=?", (event_id,)).fetchone()
+        if r is None or r[0] != "PENDING":
+            return None
+        d = json.loads(r[1])
+        st = self._load()
+        base = {"kind": "PENDING_RESOLVED", "event_id": None, "resolves_event_id": event_id,
+                "proposal_id": proposal_id, "at": at, "action": action}
+        if action == "DISCARD":
+            self._save(st, [base], [(event_id, "DISCARDED", "手動破棄", r[1], None, _iso(at))])
+            return ReportResult(event_id, False, ignored_reason="破棄")
+        if action != "APPLY":
+            return ReportResult(event_id, False, error=f"未知の action: {action}")
+        n = st["notices"].get(proposal_id)
+        if n is None:
+            return ReportResult(event_id, False, error=f"未知の proposal_id: {proposal_id}")
+        if n["proposal"]["code"] != d["code"] or n["proposal"]["side"] != d["side"]:
+            return ReportResult(event_id, False, error="銘柄・売買区分が不一致")
+        warnings: list[str] = []
+        try:
+            self._csv_apply(st, n, d, warnings)
+        except _Refused as e:
+            return ReportResult(event_id, False, error=str(e))
+        d["proposal_id"] = proposal_id
+        self._save(st, [dict(base, row=d)],
+                   [(event_id, "APPLIED", "手動照合", json.dumps(d, ensure_ascii=False, sort_keys=True),
+                     proposal_id, d.get("at"))])
+        return ReportResult(event_id, True, trade_state=n["trade_state"], warnings=warnings)
+
+    def balance_at(self, at: datetime) -> dict:
+        """ledger_events を seq 順に辿り、at 以前（含む）の最後の状態を返す（不変条件 9）。"""
+        self._require()
+        q = _as_jst(at)
+        last = None
+        for pj, rec in self._conn.execute("SELECT payload, recorded_at FROM ledger_events ORDER BY seq"):
+            e = json.loads(pj)
+            sa = e.get("state_after")
+            if sa is None:
+                continue
+            t = e.get("at") or rec
+            if _as_jst(_dt(t)) <= q:
+                last = sa
+        if last is None:
+            return {"cash": 0, "reserved": 0, "positions": {}}
+        pos = {}
+        for c, v in last["positions"].items():
+            avg = float((_dec(v["cost"]) / v["qty"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+            pos[c] = {"qty": v["qty"], "avg_price": avg}
+        return {"cash": last["cash"], "reserved": last["reserved"], "positions": pos}
 
     # ------------------------------------------------------------ queries
     def unconfirmed(self, as_of: datetime) -> list[str]:
