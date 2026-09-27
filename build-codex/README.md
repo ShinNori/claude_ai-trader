@@ -1478,3 +1478,8 @@ Codex今回は照合と文書更新のみ。試験再実行なし（同一版の
 
 製品・試験無変更。Windows pytest（関連・全体）は不採用のため未実施、passed/skipped/failed/秒は未測定。git pullは.git/FETCH_HEAD Permission denied。実行環境で.gitが読取専用のためcommit/push未完了、QUESTIONS.mdへ環境復旧事項を保存。両引き渡しMD更新・publish未実施。次はGit書込み可能な環境で同期・保存を完了し、Claudeへ取得日と合算配分の契約修正1点を依頼する。工程3・案件全体とも未完了。
 ダッシュボード更新JSONはdashboard_update_exit_d15.jsonへBの既存先頭行を維持して保存。指定nodeコマンドの結果: 更新失敗: connect EACCES 157.7.184.24:443。更新成功とは扱わない。
+
+
+## 2026-09-28T08:46:51+09:00 EXIT引継ぎ再開
+
+bf4341eのD15不採用判断を再利用。Git同期成功。製品/試験変更なし、pytest未実施（件数・秒は該当なし）。残件はClaudeへの取得日・合算配分の契約修正依頼。引継ぎ保存後に公開/commit/pushとダッシュボード送信を試み、成否は実行結果で報告する。

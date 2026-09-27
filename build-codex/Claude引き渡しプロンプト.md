@@ -63,26 +63,26 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: 引き渡し不要（R14-01受領・記録完了）
+今回の依頼: EXIT契約D15のロット取得日と合算売却配分を修正し、固定例・反証表を提示する
+
+TEAM_WORKFLOW.mdを優先。旧Aのops修正・製品実装は今回対象外。
 
 【変更ファイル一覧】
-- build-codex/README.md：移植受領、2件のSHA-256、Claude実測とCodex照合の区別を追記。
-- build-codex/EVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md：優先節にR14-01採用内容を3行追記。
-- build-codex/Claude_Opusキャッチボール.md：開始・終了時刻と完了履歴を追記。
-本B自身を除き以上。製品・試験・examples・共通仕様・QUESTIONS・Codex宛てMDは無変更。
+build-codex/QUESTIONS.md / 27543 bytes / 2026-09-28T08:47:48+09:00 / 復旧・引継ぎ記録
+build-codex/README.md / 200230 bytes / 2026-09-28T08:47:48+09:00 / 復旧・引継ぎ記録
+B自身は除外。製品・試験無変更。採否正本はbf4341eのEXIT_GENERATION_CONTRACT_DRAFT.md末尾（今回は変更なし）。
 
 【Codex 実測】
-製品・並行試験のSHA-256は依頼値と一致し、TEMPのCodex原案とバイト単位でも一致。値はREADME末尾参照。
-今回は試験未実施。任意の全体試験は同一版の関連実測を共有するため省略。
-Claude実測の転記：関連12ファイル、230 passed / 5 skipped / 0 failed、8.22秒。Windows / Codex同梱Python 3.12.14、-p no:cacheprovider、basetempはDropbox外。
+文書のみでpytest未実施。件数・秒・試験環境は該当なし。git pull --ff-only成功、HEAD/originはbf4341e一致。採否判断と試験を混同しない。
 
 【今回 Claude に求める判断】
-なし。R14-01の移植受領・契約追記は完了。追加レビュー・製品変更・試験再実行の依頼はない。旧Aおよび過去Bを新規作業として実行しない。
+1. D15-01/D15-03の取得日と合算売却配分を一意に再現できる契約へ修正する。atとeffective_at（保留解決時刻）の区別、複数日の部分約定、複数BUYロットの数量配分・訂正、初期残高/外部SELLの控除順、同銘柄残高整合を固定例と反証表で示す。台帳公開APIと既存packet_hash対象を変えずに実現できるか確認し、不能なら理由を記載。source_proposal_id一つで複数ロット配分を代用しない。
 
-依頼hash: 5d99c6feb2fb95b7a1212fea012106b70dfaa2e403932e366478c33959953188
-記録終了2026-09-25 08:33 JST。技術レビュー受領10/20維持。使用率確認なし。
+EXIT_GENERATION_CONTRACT_DRAFT.mdを採否履歴を残して改訂し、Codex宛てBへ返す。D15-02〜05の採用可能部分・§6判断の再検討は不要。製品・ops/common・既存試験/examples変更、実接続、全体再試験は範囲外。通常Sonnet、Opus並列禁止。追加反証30件目安、再実測は直結1点のみ、仮説のあるfuzzだけ合計3000束以内。次はCodexが修正版受領後に採否・実装。
 
-<!-- handoff-ready: c439587178f4f4ae3cddac3b4a20e4773eb34a42d0b1d5f18546ab63034c4823 -->
+更新:2026-09-28T08:46:51+09:00。対象bf4341e。
+
+<!-- handoff-ready: 8eba50ad2e1ad641d1e8e55dacb11d92461ea31c0063f624f7fd06e376077e6b -->
 
 ## 過去のB（実行対象外）
 
@@ -161,7 +161,7 @@ ai-trader の作業フォルダで、〈相手向け引き渡しMD〉を読み�
 今回のdev終了通知。Aの過去ops修正・全体再試験は実行しない。
 
 【変更ファイル一覧】
-build-codex/README.md / 183597 bytes / 2026-09-17T14:31:50+09:00 / 第12回受領・Windows実測・R12-01記録
+build-codex/README.md / 200230 bytes / 2026-09-28T08:47:48+09:00 / 復旧・引継ぎ記録
 build-codex/Claude_Opusキャッチボール.md / 5950 bytes / 2026-09-17T14:31:50+09:00 / 第12回完了・開始終了履歴
 運用文書のみ変更。製品・既存試験・Claude新規試験・契約§3-3は変更なし。一次資料はbuild-codex/Claude_Opusレビュー_証拠履歴_第12回.mdの結論・R12-01・対象hash。製品2ファイルと指定試験3ファイルのSHA256は同報告と一致。新規試験SHA256: eaea04af2ff5f49f9d2182da7ff456993f3e28feb1683e623b953fdba9e57b32。
 

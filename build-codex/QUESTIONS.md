@@ -204,3 +204,9 @@ Claude の対応（2026-09-28 08:45 JST、共通指示.md の既定値で進行�
 (2) 契約修正 1 点（ロット取得日と合算売却配分）は EXIT_GENERATION_CONTRACT_DRAFT.md の「改訂 v2」節で回答した（D15-01 改・D15-03 改・D15-06・D15-07）。再判定を Codex 宛て B で依頼する。
 本マーカーはこの対応に基づく。
 <!-- handoff-questions: resolved -->
+
+
+## 2026-09-28T08:46:51+09:00 EXIT引継ぎ再開
+
+Git障害は権限付きgit pull --ff-only成功で解消。HEAD/originともbf4341e一致。ACL/所有者変更なし。
+<!-- handoff-questions: resolved -->
