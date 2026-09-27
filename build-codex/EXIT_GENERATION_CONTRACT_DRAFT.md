@@ -209,3 +209,66 @@ Windowsコード読取のみ。pytest未実施（不採用分岐、passed/skippe
 依頼hash: 0cce283804bbe94c9eb66026cbcddae1e768316b9f5f2016f36d8d642029fc36。git・ダッシュボード・使用率確認は指定により未実施。公開結果は最終報告で区別する。
 
 記録時刻: 2026-09-28T08:48:38+09:00
+
+
+---
+
+## 改訂 v3（2026-09-28、v2 再判定の残り 3 点への回答。本節が v2 と衝突する場合は本節を優先）
+
+Codex が採用可能とした規則（最早の有効約定 `at` の JST 日付、部分約定の一括帰属、`exit_lots` の前方消費・後方切捨て、`observed_seq` と同銘柄整合、切り上げ指値、初期保有対象外、再通知未採用、保存未接続）は変えない。以下は入力束の完全性、分割、SELL 訂正の 3 点だけを固定する。ops/・common/・既存公開 API は変更しない。private 状態は参照しない。
+
+### D15-08（新）導出入力束と完全性の責任
+
+`derive_holdings` の入力は次の 1 束（`ExitInputBundle`）とし、**呼出側（日次 runner）が組み立てる**。
+
+| 項目 | 由来（既存公開 API のみ） | 役割 |
+|---|---|---|
+| `seq_before` / `seq_after` | `Ledger.seq()` を束の組立て前後で 2 回 | 一致しなければ `SEQ_CHANGED` として束を捨て再読（上限 3 回、超えたら当日生成を中止） |
+| `view` | `Ledger.view()` | `positions[code].qty`、`reserved_shares` |
+| `proposal_ids` | runner 自身の outbox 記録（`PHASE2_INTEGRATION` §5 のキー `(execution_day, proposal_id, packet_hash, kind)`）の全 `proposal_id` ＋ 初期スナップショットの `open_orders` の ID（`proposal_id` または `external-{i}`） | **完全性の根拠は「通知は runner だけが `create_notice` する」という既存の直列化契約**（§4）。runner 外で作られた通知は存在しない前提で、存在すれば下の照合で検出する |
+| `proposals[pid]` / `notices[pid]` | `Ledger.proposal(pid)` / `Ledger.notice(pid)` を `proposal_ids` 全件について | code/side/strategy/strategy_version/events と filled_qty/fills/trade_state |
+| `snapshot` | runner が `init_snapshot` に渡した入力の保存値（`positions`・`open_orders`・`at`） | 対象外残高の起点 |
+| `adjustments` | runner が `Ledger.adjust(kind='SPLIT', …)` を呼んだ記録（code, ratio, at）の全件。無ければ空配列 | D15-09 の数量変換 |
+
+**照合（必須。1 銘柄でも失敗したら当日の EXIT 生成を中止し `LEDGER_INCONSISTENT` を返す）**: 銘柄ごとに
+
+```text
+expected_qty = split_adj(snapshot_qty, since=snapshot.at)
+             + Σ_{BUY 通知の有効 fill} split_adj(fill.qty, since=fill.at)
+             − Σ_{SELL 通知の有効 fill} split_adj(fill.qty, since=fill.at)
+expected_qty == view.positions[code].qty（保有なしは 0）
+```
+
+`split_adj(q, since)` は `since` より後の `adjustments` を時刻順に掛けた数量。通知の欠落・runner 外の通知・未記録の分割・読取途中の変化はすべてこの式で不一致になる。**推測で補正しない**（生成を止めるのが正）。`expected_qty` は各 code で `≥ Σ ロット残 + 対象外残高` であることも同時に確認する。
+
+### D15-09（新）株式分割後のロット数量
+
+- ロットの数量は「そのロットの有効な BUY 約定数量に、**約定 `at` より後の SPLIT を時刻順に掛けたもの**」。`entry_date` は分割で変わらない。対象外残高（初期スナップショット由来）は `snapshot.at` より後の SPLIT を掛ける。SELL の消費数量も、その SELL 約定 `at` 時点の株数基準で消費し、以後の SPLIT は残数量に掛ける（= すべて「その時点の株数」で計算し、最後に現在株数へ換算する）。
+- 掛けた結果が整数にならないロットがある銘柄は `SPLIT_UNRESOLVED` で当日除外（台帳側は端株 SPLIT を拒否するので通常は起きない。逆分割で単元未満になるロットは整数でも `BELOW_LOT` へ）。
+- 台帳は SPLIT を「未決通知がない銘柄」にしか許さないため、分割時点で未決 SELL が無く、`exit_lots` の消費は分割の前後で区切れる。分割をまたぐ部分約定は存在しない。
+- `adjustments` が空で照合が合わない場合は `LEDGER_INCONSISTENT`（分割を推測しない）。
+
+### D15-10（新）SELL 訂正との整合
+
+- 現行台帳（`rule_version ≥ 3`）は SELL の数量訂正を拒否し、価格・手数料のみ訂正できる。したがって **SELL 通知の `filled_qty` は単調非減少**で、`exit_lots` の前方消費は「進むだけ」。v2 の「訂正で消費が戻る」は現行台帳では起きない経路であり、契約から削除する。将来 SELL 数量訂正を許す台帳版が出た場合も、消費は「現在の `filled_qty` の決定的関数」なので再計算規則は同じ（その版の受入は別契約）。
+- BUY の数量訂正は台帳が許す（置換後の約定でロット数量・取得日を再評価。v2 の D15-01 改どおり）。BUY の数量訂正でロット残が既に消費済みの数量を下回った場合は `LEDGER_INCONSISTENT`（照合式でも検出される）。
+- SELL の取消（`CANCELLED`）・見送り（`SKIPPED`）は未約定分を消費しない（消費は `filled_qty` のみ）。取消後、同ロットは次営業日に再び満了ロットとして現れる（再通知は v2 どおり未採用なので新 ID で生成される。これは「再通知」ではなく通常生成）。
+
+### 固定例（v3 追加）
+
+- **分割**: 7203 を 9/1 に 100 株約定（A1-20260901-7203-01）、9/10 に SPLIT ratio 2（未決通知なし）。`view.positions['7203'].qty=200`、`filled_qty=100`。`adjustments=[{code:'7203', ratio:2, at:'2026-09-10T…'}]` → ロット残 `100×2=200`、対象外 0、照合 `0 + 200 − 0 = 200` 一致。9/29 満了、候補 `qty=200`（単元 100）。`adjustments` を渡し忘れると照合 `100 ≠ 200` で `LEDGER_INCONSISTENT`。
+- **runner 外の通知**: `proposal_ids` に無い BUY 通知が 100 株約定していれば照合が 100 不足 → `LEDGER_INCONSISTENT`。
+- **読取途中の変化**: `seq_before=42`、束の組立て中に約定が入り `seq_after=43` → `SEQ_CHANGED`、再読。
+
+### 反証表への追加（31〜36）
+
+| # | 条件 | 期待 |
+|---|---|---|
+| 31 | SPLIT ratio 2（約定後）を `adjustments` 付きで | ロット 200、候補 200、照合一致 |
+| 32 | 同条件で `adjustments` 空 | `LEDGER_INCONSISTENT`、候補 0 |
+| 33 | 逆分割 ratio 0.5 で 100 株ロット → 50 株 | 整数だが単元 100 未満 → `BELOW_LOT` |
+| 34 | `proposal_ids` から 1 通知を欠落 | `LEDGER_INCONSISTENT` |
+| 35 | `seq_before ≠ seq_after` | `SEQ_CHANGED`（再読 3 回で中止） |
+| 36 | SELL の価格のみ CORRECTION | 消費不変。数量訂正は台帳が拒否（試験は既存の拒否を確認するだけ） |
+
+更新時刻: 2026-09-28 08:52 JST。保存のみ。Codex の再判定を依頼。

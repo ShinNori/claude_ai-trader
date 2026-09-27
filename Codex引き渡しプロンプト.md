@@ -67,36 +67,42 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 完了したら build-codex/README.md の末尾に「今回やったこと・テスト件数と結果・Claude に伝えたい点」を追記する。
 ```
 
-## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-28 08:45 工程3 EXIT 契約 v2）
+## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-28 08:52 工程3 EXIT 契約 v3）
 
-**発行時刻: 2026-09-28 08:45 JST（Claude / Claude Code、作業フォルダ D:\work\ai-trader。見張り経由で公開）**
+**発行時刻: 2026-09-28 08:52 JST（Claude / Claude Code、作業フォルダ D:\work\ai-trader。見張り経由で公開）**
 ※ 自動連携は別枠（tools/automation/、auto チャネル）。この B には混ぜない。
-※ 見張り経由の Codex は git（pull/commit/push）とダッシュボード更新を行わない（サンドボックスで不可。Claude が代行）。作業前の pull 不能を理由に停止しない。作業ツリーは HEAD bf4341e 以降で最新。
+※ 見張り経由の Codex は git（pull/commit/push）とダッシュボード更新を行わない（Claude が代行）。作業ツリーは HEAD a3ee0f4 以降で最新。
 
 ```
-今回の依頼: EXIT 生成契約案の改訂 v2（ロット取得日と合算売却配分。D15-01 改・D15-03 改・D15-06・D15-07）の再判定。採用なら build_exit_proposals と derive_holdings を実装し Windows 実測する
+今回の依頼: EXIT 生成契約の改訂 v3（入力束の完全性と照合・分割後のロット数量・SELL 訂正との整合。D15-08〜10）の再判定。採用なら build_exit_proposals と derive_holdings を実装し Windows 実測する
 
-一次資料: build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md の「改訂 v2」節（Claude 作成、2026-09-28 08:45 JST）。08:42 の不採用理由 2 点への回答。
-- 取得日 = 取り消されていない約定のうち最も早い `at` の JST 日付（effective_at は使わない）。部分約定は全数量を最初の約定日へ帰属。CORRECTION は置換後で再評価。
-- 合算 SELL は events.exit_lots（(entry_date, source_proposal_id) 昇順、Σqty == qty、切り捨ては後方から）。約定は先頭から消費し、消費量は filled_qty の決定的関数。
-- 紐づかない売却は 対象外残高（初期スナップショット由来）→ 最古ロット の順に消費。台帳は変更せず derive_holdings（build-codex 側）だけが解釈。
-- holdings 行は observed_seq 必須・同銘柄整合・Σlot ≤ held − unattributed。別 strategy_version の同日満了は合算せず除外。
-- §6 の 4 点は Codex の判断どおり（初期保有は対象外、再通知は未採用、保存接続は未採用）。
+一次資料: build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md の「改訂 v3」節（Claude 作成、2026-09-28 08:52 JST）。08:48 の残り 3 点への回答。
+- D15-08: 入力束は runner が既存公開 API（seq/view/proposal/notice）と自分の outbox 記録・初期スナップショット入力・SPLIT 調整記録から組む。
+  完全性の根拠は「通知は runner だけが create_notice する」既存の直列化契約。銘柄ごとの照合式（snapshot＋BUY 約定−SELL 約定を分割換算 == view.qty）で
+  欠落・runner 外通知・未記録分割・読取途中の変化を検出し、不一致なら LEDGER_INCONSISTENT で当日生成を中止（推測補正なし）。seq は前後 2 回で SEQ_CHANGED。
+- D15-09: ロット数量 = 有効 BUY 約定数量 × 約定後の SPLIT を時刻順に乗算。対象外残高も snapshot.at 以後の SPLIT を乗算。非整数は SPLIT_UNRESOLVED。
+  台帳が未決通知のある銘柄の SPLIT を拒否するため、分割をまたぐ部分約定は存在しない。
+- D15-10: 現行台帳は SELL 数量訂正を拒否するので SELL の filled_qty は単調非減少。v2 の「訂正で消費が戻る」は削除。BUY 数量訂正は置換後で再評価。
+  取消・見送りは未約定分を消費しない。
+- 固定例（分割・runner 外通知・seq 変化）と反証 31〜36 を追加。
 
-1. 改訂 v2 の実装可能性と既存契約との矛盾だけ確認し、採否を契約末尾に記載する。不採用なら不足点を 3 点以内で具体的に示す。
-2. 採用なら build-codex/aitrader/packet.py に build_exit_proposals（追加のみ）、build-codex/aitrader/exit_holdings.py（新規）に derive_holdings を実装する。既存 build_proposals・ops/・common・既存試験の期待値は変えない。
-3. 試験を新規追加する（§5 の 1〜20 と改訂 v2 の 21〜30 を目安。固定例の packet_hash は実装後に確定し期待値ファイルへ固定。例から生成して上書きしない）。16・17 は ops.gate.evaluate と Ledger.create_notice に実際に通す。
+1. 改訂 v3 の実装可能性と既存契約との矛盾だけ確認し、採否を契約末尾に記載する。不採用なら不足点を 3 点以内で具体的に示す。
+2. 採用なら build-codex/aitrader/packet.py に build_exit_proposals（追加のみ）、build-codex/aitrader/exit_holdings.py（新規）に derive_holdings と照合を実装する。
+   ops/・common・既存試験の期待値は変えない。
+3. 試験を新規追加する（§5 の 1〜20、v2 の 21〜30、v3 の 31〜36 を目安。固定例の packet_hash は実装後に確定し期待値ファイルへ固定）。
+   16・17 は ops.gate.evaluate と Ledger.create_notice に、31〜36 は実 Ledger（一時 DB、Dropbox 外）に通す。
 4. Windows 実測 1 回: 新規試験＋packet/gate/ledger の関連試験。passed/skipped/failed/秒/環境を記録。全体は Codex の判断で 1 回。
-5. README 末尾に短く記録し、Claude 向け次回 B を必須 3 項目様式で保存・公開する（publish --agent claude は実行してよい。git とダッシュボードは行わない）。次に Claude に求めるのは EXIT 生成の重要差分（取得日・配分・消費順・数量・指値）の独立確認 1 点。
+5. README 末尾に短く記録し、Claude 向け次回 B を必須 3 項目様式で保存・公開する（publish --agent claude は実行してよい）。次に Claude に求めるのは
+   EXIT 生成の重要差分（照合式・分割換算・取得日・配分・消費順・数量・指値）の独立確認 1 点。
 
-編集範囲は build-codex/aitrader/packet.py（追加のみ）、build-codex/aitrader/exit_holdings.py（新規）、build-codex/tests/（新規）、契約文書、README、Claude_Opusキャッチボール.md。
-ops/・common/・既存試験の期待値・合成データ・examples・Claude の新規試験・両引き渡し MD の自分宛ては変更しない。既存試験の削除・skip・xfail・条件緩和は禁止。
-実API・実売買審査・LINE・証券接続・発注は行わない。使用率確認は行わない。
+編集範囲は build-codex/aitrader/packet.py（追加のみ）、build-codex/aitrader/exit_holdings.py（新規）、build-codex/tests/（新規）、契約文書、README、
+Claude_Opusキャッチボール.md。ops/・common/・既存試験の期待値・合成データ・examples・Claude の新規試験・自分宛て MD は変更しない。
+既存試験の削除・skip・xfail・条件緩和は禁止。実API・実売買審査・LINE・証券接続・発注・使用率確認は行わない。
 
 完了条件: 1 の採否記載、（採用時）2〜4、5 の保存・公開。不採用なら 1 と 5 のみ。
 ```
 
-<!-- handoff-ready: 0cce283804bbe94c9eb66026cbcddae1e768316b9f5f2016f36d8d642029fc36 -->
+<!-- handoff-ready: 2aaea69f3412dcf6536b53001df8759e0fd9c46ff96852fa23d030252f8901e8 -->
 
 ---
 
@@ -147,5 +153,6 @@ ops/・common/・既存試験の期待値・合成データ・examples・Claude 
 | 2026-09-25 08:30 | （Claude）R14-01: Codex の修正案を製品へ移植（ユーザー承認の例外）・並行試験追加・Windows 実測 230 passed | Codex へ受領・記録を依頼（公開） |
 | 2026-09-28 08:38 | （Claude）工程3: 実保有からの SELL（EXIT）候補生成の契約案 D15-01〜05 | EXIT_GENERATION_CONTRACT_DRAFT.md。Codex へ採否・実装・実測を依頼（公開） |
 | 2026-09-28 08:45 | （Claude）工程3: EXIT 契約案の改訂 v2（取得日・合算配分・消費順・入力整合）を追記し再判定を依頼 | Codex の不採用 2 点に回答。見張り経由 Codex の git/ダッシュボード不可を共通指示に反映（公開） |
+| 2026-09-28 08:52 | （Claude）工程3: EXIT 契約の改訂 v3（入力束の完全性と照合式・分割換算・SELL 訂正整合）を追記し再判定を依頼 | v2 再判定の残り 3 点に回答（公開） |
 
 ※ Cowork（このセッション）からの `tools/run_codex_build.*` 自動起動は、Anthropic 側のネットワーク方針で OpenAI に到達できず失敗する（2026-09-08 確認）。自動起動は則光さんの PC 上の Claude Code から行う。往復の自動化は `tools/pingpong.ps1`（`tools/PINGPONG.md` 参照、2026-09-09 追加）。
