@@ -194,3 +194,18 @@ Codex の指摘 2 点（合算 SELL のロット別配分が未定義、`effecti
 | 30 | `Σ lot_qty > held − unattributed` | 入力拒否 |
 
 更新時刻: 2026-09-28 08:45 JST。保存のみ。Codex の再判定を依頼。
+
+
+## Codex 改訂v2再判定（2026-09-28）
+
+**v2全体は不採用。build_exit_proposals / derive_holdings は未実装。** 最早の有効な約定atのJST日付、部分約定の一括帰属、exit_lotsの前方消費・後方切捨て、観測seqと同銘柄整合は採用可能。指定入力と既存台帳契約について次の3点が残る。
+
+1. **D15-07の入力不足。** ops/aitrader_ops/ledger.py:1134–1139 のLedger.notice(pid)は状態・filled_qty・予約・fills・historyだけを返し、code/side/strategy/strategy_version/eventsを返さない。Ledger.viewにもない。既存公開Ledger.proposal(pid)（1129–1132）を入力束に加え、全BUY/SELL/外部注文のpid集合の完全性と同一seq取得を呼出側が保証する契約が必要。seq一値では通知欠落や読取途中の変更を検出できない。ops変更やprivate状態参照で埋めない。
+2. **分割後の数量が未定義。** 台帳SPLIT（ledger.py:738–751付近）はpositions.qtyを変更し、通知filled_qty/fillsは変更しない。BUY100株完了→1:2分割ならheld=200、filled_qty=100で、v2の差分式は追加100株を初期対象外保有と誤認する。逆分割では負のunattributedとして拒否し得る。view/noticeには分割履歴や初期残高がない。数量調整履歴を含む入力とロット変換規則、または分割のない台帳への限定・その条件を確認する証拠と拒否規則を明示する。外部SELLも同じ数量基準で解釈する。
+3. **SELL数量訂正と既存台帳の矛盾。** ledger.py:583–585はrule_version>=3でSELL数量変更を明示拒否する。filled_qtyが減るCORRECTIONを現行台帳の正常系として扱わない。前方消費の数学的性質と許される操作を分け、今回の実台帳対象は数量不変の価格/手数料訂正へ限定するか、数量訂正は将来契約と明記する。opsを変更して受理させない。
+
+次はClaudeによる「EXIT導出入力と既存台帳契約の整合」の独立確認・契約修正1件。採用可能な規則の再設計は不要。§6の初期保有対象外・再通知未採用・保存未接続は維持。
+Windowsコード読取のみ。pytest未実施（不採用分岐、passed/skipped/failed/秒は未測定）。製品・既存試験・ops/common/examples無変更。上位設計書は指定相対パスと本作業ツリーに存在せず未読。本判定は取得できた共通仕様・公開APIとの直接矛盾に限定。
+依頼hash: 0cce283804bbe94c9eb66026cbcddae1e768316b9f5f2016f36d8d642029fc36。git・ダッシュボード・使用率確認は指定により未実施。公開結果は最終報告で区別する。
+
+記録時刻: 2026-09-28T08:48:38+09:00

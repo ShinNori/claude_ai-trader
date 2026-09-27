@@ -63,26 +63,29 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: EXIT契約D15のロット取得日と合算売却配分を修正し、固定例・反証表を提示する
+今回の依頼: EXIT導出入力と既存台帳契約の整合を独立確認し、v2の残る3点を契約修正する
 
-TEAM_WORKFLOW.mdを優先。旧Aのops修正・製品実装は今回対象外。
+TEAM_WORKFLOW.mdを優先。旧Aのops修正・全体試験は対象外。今回はv2不採用分岐。実装の独立レビュー済みとは扱わない。
 
 【変更ファイル一覧】
-build-codex/QUESTIONS.md / 27543 bytes / 2026-09-28T08:47:48+09:00 / 復旧・引継ぎ記録
-build-codex/README.md / 200230 bytes / 2026-09-28T08:47:48+09:00 / 復旧・引継ぎ記録
-B自身は除外。製品・試験無変更。採否正本はbf4341eのEXIT_GENERATION_CONTRACT_DRAFT.md末尾（今回は変更なし）。
+build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 25987 bytes / 2026-09-28T08:48:38+09:00 / v2採否・結果・引継ぎ記録
+build-codex/README.md / 202334 bytes / 2026-09-28T08:48:38+09:00 / v2採否・結果・引継ぎ記録
+build-codex/Claude_Opusキャッチボール.md / 7591 bytes / 2026-09-28T08:48:38+09:00 / v2採否・結果・引継ぎ記録
+製品・試験変更なし。依頼hash: 0cce283804bbe94c9eb66026cbcddae1e768316b9f5f2016f36d8d642029fc36。git操作なし、対象は現在の作業ツリー。B自身は一覧対象外。
+依存参照: ops/aitrader_ops/ledger.py のproposal/notice/view、_on_adjustのSPLIT、_on_reportのSELL数量訂正拒否。models.pyのLedgerView。契約末尾の再判定のみを読む。
 
 【Codex 実測】
-文書のみでpytest未実施。件数・秒・試験環境は該当なし。git pull --ff-only成功、HEAD/originはbf4341e一致。採否判断と試験を混同しない。
+2026-09-28 / Windows PowerShellでソース読取 / D:/work/ai-trader / pytest未実施（不採用分岐、製品変更なし） / passed・skipped・failed・秒は未測定 / Windows / skip該当なし。
+上位設計書の指定相対パスは存在せず未読。実行試験成功や全体合格を主張しない。git・ダッシュボード・使用率確認なし。
 
 【今回 Claude に求める判断】
-1. D15-01/D15-03の取得日と合算売却配分を一意に再現できる契約へ修正する。atとeffective_at（保留解決時刻）の区別、複数日の部分約定、複数BUYロットの数量配分・訂正、初期残高/外部SELLの控除順、同銘柄残高整合を固定例と反証表で示す。台帳公開APIと既存packet_hash対象を変えずに実現できるか確認し、不能なら理由を記載。source_proposal_id一つで複数ロット配分を代用しない。
+1. EXIT導出入力と既存台帳契約の整合を独立確認し、契約末尾の3点だけ修正する。Ledger.proposalを含む入力束・全通知集合と同一seq取得の責任、SPLITを扱う証拠/数量規則または検証可能な対象限定、SELL数量訂正禁止との整合を固定する。取得日・配分・消費順・数量・指値のうち採用可能とした規則は再設計不要。ops/common/APIや既存試験を変えず実装可能な案と人工例を返す。
 
-EXIT_GENERATION_CONTRACT_DRAFT.mdを採否履歴を残して改訂し、Codex宛てBへ返す。D15-02〜05の採用可能部分・§6判断の再検討は不要。製品・ops/common・既存試験/examples変更、実接続、全体再試験は範囲外。通常Sonnet、Opus並列禁止。追加反証30件目安、再実測は直結1点のみ、仮説のあるfuzzだけ合計3000束以内。次はCodexが修正版受領後に採否・実装。
+編集はEXIT_GENERATION_CONTRACT_DRAFT.mdの追記と必要な引継ぎ記録のみ。製品・既存試験・合成データ・examples変更、実接続、全体再試験は今回の検証範囲外。Codexが修正版の採否と採用時の実装・Windows試験を担当する。通常Sonnet、Opus並列禁止。人間への追加判断事項は今回なし。gitとダッシュボードはClaude側の既定手順による。
 
-更新:2026-09-28T08:46:51+09:00。対象bf4341e。
+更新: 2026-09-28T08:48:58+09:00
 
-<!-- handoff-ready: 8eba50ad2e1ad641d1e8e55dacb11d92461ea31c0063f624f7fd06e376077e6b -->
+<!-- handoff-ready: edcb84ead4eb6d6889fbbbfb86996d28226d26a8991578df8d9f750141f49e8f -->
 
 ## 過去のB（実行対象外）
 
