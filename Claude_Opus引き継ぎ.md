@@ -159,3 +159,9 @@ New Chat ＋ この文書が実質的な手動圧縮にあたる。自動圧縮�
 - 最新は第14回（put/verify 独立確認、R14-01 中 1 件）。Codex 宛 B は保存のみ・未公開で、R14-01 の採否は未回答。
 - QUESTIONS.md の質問はすべて解決マーカー済み。エンジンの blocked は旧 hash のまま（再開時に `codex_engine.py resume`）。
 - 見張りタスク「ai-trader handoff watch codex」は旧 PC 側の登録。新 PC では上記 4 で登録し直す。
+
+### 移行完了（2026-09-27 10:28 JST）
+
+`D:\work\ai-trader` に clone 済み（関連 12 ファイル 230 passed / 5 skipped）。見張りタスクは新パスで登録し直した（起動は次の公開時）。
+`.gitattributes` に `* -text` を追加し、改行を変換しないようにした（LF 正規化で生バイト hash の試験 41 件が落ちたため）。
+以後の作業フォルダは `D:\work\ai-trader`。Dropbox 内の旧フォルダは参照専用で編集しない。新しい Claude Code セッションは `D:\work\ai-trader` で開く。
