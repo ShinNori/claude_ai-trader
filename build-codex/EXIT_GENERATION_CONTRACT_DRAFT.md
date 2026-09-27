@@ -125,3 +125,72 @@ build_exit_proposals(holdings, as_of, prev_close, lot_sizes, events, snapshot_id
 4. 保存mode名・13キー流用は今回決定しない（保存接続を明示的に未採用とする判断）。D13既存modeや出力を変更しない。ロット配分を含む入力schemaと検証契約を先に確定する。
 
 次の技術工程はClaudeによる「ロット取得日と合算売却配分」の契約修正1点。製品・既存試験・common・opsは無変更のためpytestは未実施（passed/skipped/failed/秒は未測定）。加えてgit pullは.git/FETCH_HEADのPermission deniedで失敗。この実行環境では.gitが読取専用のためcommit/push完了不能。QUESTIONS.mdに環境復旧事項を記録し、今回の自動実行規則に従って相手宛てB更新・公開は停止する。採否記録の保存を案件全体完了とは扱わない。
+
+
+---
+
+## 改訂 v2（2026-09-28、Codex 不採用への回答。本節が §1〜§3 と衝突する場合は本節を優先）
+
+Codex の指摘 2 点（合算 SELL のロット別配分が未定義、`effective_at` は取得日に使えない）に答え、D15-01 と D15-03 を差し替え、D15-06〜07 を追加する。§6 の 4 点は Codex の判断（初期保有は対象外、導出は build-codex 側の読取専用、再通知は未採用、保存接続は未採用）をそのまま採る。
+
+### D15-01（改）取得日と取得ロット
+
+- **取得日** `entry_date` = そのロット（BUY 通知）の、取り消されていない（`reversed=false`）約定のうち **`at` が最も早いもの**の JST 日付。`effective_at`（残高反映時刻。保留 APPLY では解決時刻）は使わない。
+- 複数日にまたがる部分約定は、**全数量を最初の約定日へ帰属**させる（1 通知＝1 ロット。分割しない）。
+- CORRECTION で置き換えられた約定は `reversed=true` になるので除外され、置換後の約定の `at` で再評価する（訂正で取得日が変わり得る。変わった場合は満了日も再計算）。
+- 初期スナップショット由来の保有（`positions` にあるが BUY 通知に紐づかない数量）は**取得日不明として生成対象外**。この「対象外残高」を `unattributed_qty[code] = held − Σ(通知由来ロットの残数量)` として明示的に持つ（負なら入力拒否）。
+
+### D15-06（新）合算 SELL のロット配分
+
+- 同銘柄で同日に満了したロットを 1 候補に合算するとき、`events.exit_lots = [{"source_proposal_id": …, "qty": …}, …]` を **`(entry_date, source_proposal_id)` 昇順**で並べ、`Σ qty == proposal.qty` とする。各要素の `qty` はそのロットの残数量以下で、単元切り捨ては合算後に行い、切り捨て分は**最後の要素から**減らす。
+- `events.source_proposal_id` は廃止し、`exit_lots` に一本化する（要素 1 件でも配列）。`packet_hash` の対象外（HASH_FIELDS 14 項目）なので hash 契約は変わらない。
+- **約定の消費順**: SELL 通知の `filled_qty` を `exit_lots` の先頭から順に消費する（部分約定は前方から埋まる）。ロット残 = `filled_qty(BUY) − Σ(その BUY を参照する exit_lots の消費分)`。消費分は `filled_qty(SELL)` だけから決まる決定的な関数なので、CORRECTION で `filled_qty` が減れば消費も同じ規則で戻る。台帳に新しい状態は持たない。
+- **紐づかない売却**（初期スナップショットの `open_orders` にある SELL、外部注文、`exit_lots` を持たない SELL 通知）の消費順: ① 対象外残高 `unattributed_qty` → ② 通知由来ロットを `entry_date` の古い順（同日は `source_proposal_id` 昇順）。①を先にするのは、取得日不明の残高を先に減らして通知由来ロットの満了判定を保つため。
+- 台帳の不変条件（保有総数・`reserved_shares`）は従来どおり銘柄合計で検査し、ロット配分は `derive_holdings`（build-codex 側の読取専用）だけが解釈する。`ops/` は変更しない。
+
+### D15-03（改）数量と入力整合
+
+- `holdings` の全行に **同一の `observed_seq`**（台帳の `seq`）を必須にし、異なれば入力拒否（`MIXED_OBSERVATION`）。同銘柄の行は `held_qty`・`reserved_shares`・`open_sell_notice` が一致していなければ拒否。銘柄ごとに `Σ lot_qty ≤ held_qty − unattributed_qty` でなければ拒否。
+- 同銘柄で `strategy` または `strategy_version` が異なるロットが同日に満了した場合は**合算しない**。gate が 1 銘柄 1 候補を前提にするため、その銘柄は当日 `MIXED_STRATEGY_VERSION` で除外し、候補を出さない（次営業日以降も同じなので、運用上は同一銘柄を別版で持たない前提。カタログ v0.2「同一銘柄を保有している間は別の保有群へ追加しない」と整合）。
+- `qty = floor(min(Σ 満了ロット残, held − reserved) / lot) × lot`。0 なら除外（従来どおり）。
+
+### D15-07（新）`holdings` 行の最終形
+
+```text
+{code, observed_seq, source_proposal_id, strategy, strategy_version, entry_date, lot_qty,
+ held_qty, reserved_shares, unattributed_qty, open_sell_notice}
+```
+
+`derive_holdings(ledger_view, notices, seq)` は build-codex 側の純粋関数とし、入力は `Ledger.view()`・`Ledger.notice(pid)` の戻り値（素の dict/dataclass）と `Ledger.seq()`。同一 `seq` で取った値だけを組み合わせる（読取中に台帳が進んだら破棄して再読）。
+
+### 固定例（改）
+
+前提は §4 と同じ（`holding_days=20`、人工営業日、`as_of=2026-09-29`、`observed_seq=42`）。
+
+| ロット | entry_date（最初の約定 `at`） | 残 | held / reserved / unattributed | 結果 |
+|---|---|---|---|---|
+| 7203 / A1-20260901-7203-01 | 2026-09-01（9/1 60 株＋9/2 40 株の部分約定でも 9/1） | 100 | 300 / 0 / 100 | 満了。合算対象 |
+| 7203 / A1-20260901-7203-02 | 2026-09-01 | 100 | 同上 | 満了。合算対象 |
+| 6857 / A1-20260908-6857-01 | 2026-09-08 | 100 | 100 / 0 / 0 | `NOT_DUE` |
+| 9984 / A1-20260901-9984-01 | 2026-09-01 | 200 | 200 / 200 / 0 | `NO_SELLABLE_SHARES` |
+
+候補 1 件: `proposal_id=X1-20260930-7203-01`、`qty=200`（min(200, 300−0)=200、単元 100）、`limit_price=1990.0`、`events={"next_earnings_date": null, "margin_regulated": false, "exit_lots": [{"source_proposal_id": "A1-20260901-7203-01", "qty": 100}, {"source_proposal_id": "A1-20260901-7203-02", "qty": 100}]}`。7203 の対象外残高 100 株は候補に含めない。
+
+消費の例: この SELL が 150 株部分約定 → `-01` 100 株・`-02` 50 株を消費。`-02` の残 50 株は翌営業日に再び満了ロットとして現れるが、未決 SELL（残 50 株）がある間は `OPEN_SELL_EXISTS` で生成しない。
+
+### 反証表への追加（§5 に加える。上限 30 件）
+
+| # | 条件 | 期待 |
+|---|---|---|
+| 21 | 9/1 60 株・9/2 40 株の部分約定 | `entry_date=2026-09-01`、ロット 100 株 |
+| 22 | 9/1 の約定を CORRECTION で 9/3 の約定に置換 | `entry_date=2026-09-03`、満了日が後ろへ |
+| 23 | 保留 APPLY で `effective_at` が解決時刻 | `entry_date` は `at` の日付 |
+| 24 | 同銘柄 2 ロット合算・切り捨て 50 株 | `exit_lots` は `[(−01, 100), (−02, 50)]`（後方から減らす） |
+| 25 | 合算 SELL の 150 株部分約定後の `derive_holdings` | `-01` 残 0、`-02` 残 50 |
+| 26 | 外部 SELL 100 株（`exit_lots` なし）で対象外残高 100 株あり | 対象外残高から消費、ロット残不変 |
+| 27 | 外部 SELL 150 株で対象外残高 100 株 | 対象外 100 → 最古ロット 50 |
+| 28 | `observed_seq` が行ごとに違う | 入力拒否 `MIXED_OBSERVATION` |
+| 29 | 同銘柄・別 `strategy_version` の同日満了 | `MIXED_STRATEGY_VERSION` で除外、候補 0 |
+| 30 | `Σ lot_qty > held − unattributed` | 入力拒否 |
+
+更新時刻: 2026-09-28 08:45 JST。保存のみ。Codex の再判定を依頼。
