@@ -289,3 +289,10 @@ U01 CSV直接/保留・TRADEの時刻あり/なし6通り、U02記録順と時�
 ユーザーがCodexで続けるよう指定したため、W01a/bの未来操作の戻り値2行だけをINVALIDに更新。後続の安全性assertは維持し、25件の関連試験が成功した。これはClaude原案へのCodex更新で、Claude再レビュー済みではない。
 
 さらに保存event_atのSQL MAXが文字列順でUTC/JST混在時に最新履歴を誤る不具合を再現した。_jstで正規化したdatetimeの最大を採用し、両方向の遅着STOP/RESUMEとnaive拒否の新規4件が成功。既存不正履歴の修復や制御操作の自動再実行は追加していない。最終全体実測は上記対応報告の最新節を参照。
+
+## 2026-09-28 提案: Ledger.notice_ids() の追加（EXIT 生成の通知集合完全性のため。Claude 記載）
+
+現行 `Ledger` には通知 ID を全列挙する公開 API が無く（`unconfirmed`/`expire_notices` は状態で絞る）、EXIT 候補生成の入力束は runner の
+`candidates` 表（INTENT を通知作成前に永続化）を上位集合として用いる（EXIT_GENERATION_CONTRACT_DRAFT.md 改訂 v4 D15-08）。
+runner 外の直接書込で BUY/SELL が同数確定した欠落は入力束では検出できない。読取専用の `Ledger.notice_ids() -> list[str]` を追加すれば
+`candidate_ids ⊇ notice_ids()` の検査で閉じられる。ops 側の採否は別途。既存 API・挙動は変更しない。

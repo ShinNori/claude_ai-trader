@@ -286,3 +286,62 @@ expected_qty == view.positions[code].qty（保有なしは 0）
 Windows PowerShellによるコード読取のみ。pytest未実施（不採用分岐、passed/skipped/failed/秒は未測定）。製品・既存試験・ops/common/examples無変更。上位設計書は指定相対パスに存在せず未読。本判断は現行runnerと既存直列化/中断契約への直接矛盾に限定した。サブエージェントなし（独立した実装作業なし）。
 依頼hash: 2aaea69f3412dcf6536b53001df8759e0fd9c46ff96852fa23d030252f8901e8。git・ダッシュボード・使用率確認は指定により未実施。人間への追加判断事項はなくQUESTIONS.mdは変更しない。次担当Claudeには入力束の完全性の独立確認・契約修正1件を依頼する。公開結果は最終報告で区別する。
 記録時刻: 2026-09-28T08:54:24.3425635+09:00
+
+
+---
+
+## 改訂 v4（2026-09-28、v3 再判定の残り 1 点「通知集合の完全性」への回答。D15-08 を差し替える）
+
+Codex の反例 2 つ（通知作成後・outbox 保存前の中断、純増減が 0 になる欠落）は正しい。outbox と残高照合を完全性の根拠から外し、**通知作成より前に永続化される記録**を上位集合に使う。信頼前提と検出保証を分けて書く。D15-09・D15-10 と、採用可能とされた規則は変えない。
+
+### D15-08（改 2）通知集合の上位集合と生成の前提条件
+
+**根拠となる既存の順序**（`runner.py` 462〜474、`RUNNER_RECOVERY_PLAN.md` §1）: runner は候補ごとに `orchestration.sqlite` の `candidates` 表へ **INTENT 行を INSERT してから** `Ledger.create_notice` を呼び、APPROVED → outbox INSERT の順に進む。REJECTED の候補も `candidates` 行を持つ。初期スナップショットの外部注文は `init_snapshot` の入力にある。したがって
+
+```text
+runner が作った通知の ID 集合 ⊆ candidates 表の全 pid（状態を問わない） ∪ snapshot.open_orders の ID
+```
+
+は、**中断がどの時点で起きても成り立つ**（INTENT 行が先に確定しているため。journal の INSERT 自体が失敗した場合は create_notice に進まない）。これを `candidate_ids` と呼び、入力束の `proposal_ids` に使う。outbox は根拠に使わない。
+
+**生成の前提条件（1 つでも満たさなければ当日の EXIT 生成を行わず、理由を返す）**:
+
+| 条件 | 判定 | 理由コード |
+|---|---|---|
+| 未完了 run が無い | `candidates` に `state='INTENT'` の行が無い。かつ `candidate_ids` の各 pid について「`Ledger.proposal(pid)` が存在するのに outbox 行が無い」ものが無い（= `RUNNER_RECOVERY_PLAN` の「INTENT/CREATED」「INTENT/APPROVED」停止状態） | `RUN_INCOMPLETE` |
+| 未決通知が既知 | `Ledger.unconfirmed(as_of)`（公開 API。SENT/EXPIRED/EXTERNAL かつ取引未確定の通知 ID）⊆ `candidate_ids` | `LEDGER_INCONSISTENT`（既知集合の外に未決通知がある） |
+| 残高照合 | D15-08（v3）の照合式が全銘柄で一致 | `LEDGER_INCONSISTENT` |
+| 観測の安定 | `seq_before == seq_after` | `SEQ_CHANGED` |
+
+`OPEN_SELL_EXISTS` の判定は `candidate_ids` の SELL 通知だけでなく、**`Ledger.unconfirmed(as_of)` に含まれる同銘柄の通知**（外部注文 EXTERNAL を含む）でも成立させる。これで「未決 SELL を見落として生成する」経路は、runner 外書込が無い限り閉じる。
+
+### 信頼前提（T）と検出保証（D）の区別
+
+| 種別 | 内容 | 根拠 |
+|---|---|---|
+| T1 | 通知（`create_notice`）と台帳への書込は runner の直列化ロック内でのみ行われる。runner 外の直接書込は運用で禁止 | `PHASE2_INTEGRATION` §4、`RUNNER_RECOVERY_PLAN` §継続前に必要な照合 |
+| T2 | runner は INTENT 行を `create_notice` より前に永続化する | `runner.py` 462〜474（現行コード。変更しない） |
+| D1 | T1・T2 の下で、中断がどこで起きても通知集合は `candidate_ids` に含まれる。未完了 run は `RUN_INCOMPLETE` で拒否 | 上位集合の構成から |
+| D2 | 既知集合の外にある**未決**通知は `unconfirmed` で検出 | 公開 API |
+| D3 | 既知集合の外にある**確定済み**通知のうち、純増減が残る欠落は残高照合で検出 | 照合式 |
+| **非保証** | 既知集合の外で BUY と SELL が同数だけ確定して純増減 0 になった欠落（Codex の反例 2）は、**T1 が破られた場合にのみ生じ、入力束だけでは検出しない** | `Ledger` に通知 ID の全列挙 API が無いため |
+
+非保証の範囲は「T1 違反（runner 外書込）」に限定される。これを検出したい場合の唯一の手段は台帳イベント記録（`ledger_events`）の全走査で、現行の公開 API には無い。**`Ledger.notice_ids() -> list[str]`（全通知 ID の読取専用列挙）を ops 側の将来 API として `common/ISSUES.md` に提案**し、採用されたら `candidate_ids ⊇ notice_ids()` の検査を D4 として追加する。今回は ops を変更しないので D4 は含めない。
+
+### 固定例（v4 追加）
+
+- **中断（通知作成後・outbox 前）**: `candidates` に `pid=A1-20260929-6857-01, state=INTENT`、`Ledger.proposal(pid)` は存在、outbox 行なし → `RUN_INCOMPLETE`。EXIT 生成は行わず、復旧手順（RUNNER_RECOVERY）へ。候補 0・除外一覧なし・理由 1 件。
+- **相殺する欠落**: `candidate_ids` に無い SELL 100 株（7203、9/15 全約定）と BUY 100 株（7203、9/16 全約定）が台帳にある。`unconfirmed` は空、照合は `100 == 100` で一致 → **検出しない**（T1 違反の事例として固定。試験は「検出しないこと」ではなく「T1 の下では生じないこと」を、runner 経路で通知を作ったときに `candidate_ids` が全通知を含むことで確認する）。
+- **未決 SELL が既知集合の外**: 外部注文由来でない SELL 通知 `X1-…` が SENT・未約定で `candidate_ids` に無い → `unconfirmed` に現れ `LEDGER_INCONSISTENT`。
+
+### 反証表への追加（37〜41）
+
+| # | 条件 | 期待 |
+|---|---|---|
+| 37 | `candidates` に INTENT 行が残る | `RUN_INCOMPLETE`、候補 0 |
+| 38 | INTENT 行なし・通知あり・outbox なし（APPROVED 後の中断を模擬） | `RUN_INCOMPLETE` |
+| 39 | `unconfirmed` に `candidate_ids` 外の ID | `LEDGER_INCONSISTENT` |
+| 40 | runner 経路（`run_daily` 相当の模擬）で BUY 2 件を通知した後の `candidate_ids` | 2 件とも含む（`Ledger.proposal` で存在確認） |
+| 41 | 外部注文（EXTERNAL）の未決 SELL がある銘柄 | `OPEN_SELL_EXISTS`（`unconfirmed` 経由で検出） |
+
+更新時刻: 2026-09-28 08:57 JST。保存のみ。Codex の再判定を依頼。
