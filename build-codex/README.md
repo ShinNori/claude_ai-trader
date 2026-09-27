@@ -1488,3 +1488,9 @@ bf4341eのD15不採用判断を再利用。Git同期成功。製品/試験変更
 ## EXIT契約v2再判定 2026-09-28T08:48:38+09:00
 
 v2全体は不採用。指定notice入力にproposal情報がない、分割後数量が未定義、SELL数量訂正が既存台帳で禁止される、の3点。詳細はEXIT_GENERATION_CONTRACT_DRAFT.md末尾。製品・試験無変更、両関数未実装。Windowsコード読取のみ、pytest未実施（passed/skipped/failed/秒未測定）。次はClaudeが導出入力と既存台帳契約の整合を独立確認・修正する1件。git・ダッシュボード・使用率確認なし。成果保存後に相手宛てBを更新・dev公開する。
+
+## 2026-09-28 EXIT契約v3再判定
+
+v3は不採用。残件はD15-08の入力束完全性1点。既存runnerのcreate_notice→outbox間の中断で一覧外の未約定通知が残り、残高照合・安定seqでは検出できない。欠落BUY/SELLが同数なら相殺し取得ロットも誤る。根拠と修正条件はEXIT_GENERATION_CONTRACT_DRAFT.md末尾。build_exit_proposals / derive_holdingsは未実装、製品・既存試験無変更。Windowsコード読取のみ、pytest未実施（passed/skipped/failed/秒未測定）。git・ダッシュボード・使用率確認なし。上位設計書は指定相対パスに存在せず未読。
+次担当Claude: 入力束完全性の独立確認・契約修正1件。[次回B](Claude引き渡しプロンプト.md)へ成果保存後に記載しdev公開する。今回の再判定完了をEXIT実装完了とは扱わない。
+記録時刻: 2026-09-28T08:54:24.3425635+09:00

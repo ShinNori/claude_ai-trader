@@ -63,29 +63,30 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: EXIT導出入力と既存台帳契約の整合を独立確認し、v2の残る3点を契約修正する
+今回の依頼: EXIT入力束の完全性を独立確認し、通知作成後の中断と相殺する欠落への契約を修正する
 
-TEAM_WORKFLOW.mdを優先。旧Aのops修正・全体試験は対象外。今回はv2不採用分岐。実装の独立レビュー済みとは扱わない。
+TEAM_WORKFLOW.mdを優先。旧Aのops修正・全体試験は対象外。v3不採用分岐でありEXIT実装の独立レビュー依頼ではない。
 
 【変更ファイル一覧】
-build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 25987 bytes / 2026-09-28T08:48:38+09:00 / v2採否・結果・引継ぎ記録
-build-codex/README.md / 202334 bytes / 2026-09-28T08:48:38+09:00 / v2採否・結果・引継ぎ記録
-build-codex/Claude_Opusキャッチボール.md / 7591 bytes / 2026-09-28T08:48:38+09:00 / v2採否・結果・引継ぎ記録
-製品・試験変更なし。依頼hash: 0cce283804bbe94c9eb66026cbcddae1e768316b9f5f2016f36d8d642029fc36。git操作なし、対象は現在の作業ツリー。B自身は一覧対象外。
-依存参照: ops/aitrader_ops/ledger.py のproposal/notice/view、_on_adjustのSPLIT、_on_reportのSELL数量訂正拒否。models.pyのLedgerView。契約末尾の再判定のみを読む。
+build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 36210 bytes / 2026-09-28T08:54:24.3610775+09:00 / v3採否・結果・引継ぎ記録
+build-codex/README.md / 203275 bytes / 2026-09-28T08:54:24.3620759+09:00 / v3採否・結果・引継ぎ記録
+build-codex/Claude_Opusキャッチボール.md / 8203 bytes / 2026-09-28T08:54:24.3620759+09:00 / v3採否・結果・引継ぎ記録
+製品・試験変更なし。依頼hash: 2aaea69f3412dcf6536b53001df8759e0fd9c46ff96852fa23d030252f8901e8。対象は現在の作業ツリー（git操作なし、依頼記載の基準a3ee0f4以降をgitでは再確認していない）。B自身は一覧対象外。
+依存参照: runner.py:462–474、PHASE2_INTEGRATION.md §4–5、ledger.pyのproposal/notice/view。契約末尾のv3再判定を読む。
 
 【Codex 実測】
-2026-09-28 / Windows PowerShellでソース読取 / D:/work/ai-trader / pytest未実施（不採用分岐、製品変更なし） / passed・skipped・failed・秒は未測定 / Windows / skip該当なし。
-上位設計書の指定相対パスは存在せず未読。実行試験成功や全体合格を主張しない。git・ダッシュボード・使用率確認なし。
+2026-09-28 / Windows PowerShell Get-Content・Select-Stringによるコード読取 / D:/work/ai-trader / pytest未実施（不採用分岐、製品変更なし） / passed・skipped・failed・秒未測定 / Windows / skip該当なし。
+通知欠落の反例はソースと照合式に基づく分析で、実Ledgerによる実測ではない。上位設計書は指定相対パスに存在せず未読。git・ダッシュボード・使用率確認なし。
 
 【今回 Claude に求める判断】
-1. EXIT導出入力と既存台帳契約の整合を独立確認し、契約末尾の3点だけ修正する。Ledger.proposalを含む入力束・全通知集合と同一seq取得の責任、SPLITを扱う証拠/数量規則または検証可能な対象限定、SELL数量訂正禁止との整合を固定する。取得日・配分・消費順・数量・指値のうち採用可能とした規則は再設計不要。ops/common/APIや既存試験を変えず実装可能な案と人工例を返す。
+1. EXIT入力束完全性の重要差分だけを独立確認し、D15-08を修正する。outbox前中断ではrunner自身の通知も欠落するため、INTENTを含む永続候補記録と未完了runの拒否・照合条件を固定する。残高一致が検出するのは純増減不一致であり、欠落BUY/SELLの相殺は検出しない。runner外書込を禁止する信頼前提と検出保証を分け、現行APIと許可範囲で検証可能な完全性根拠または対象限定を記載する。中断・相殺の2例を固定し、取得日・配分・消費順・数量・指値の採用可能な規則は再設計しない。
 
-編集はEXIT_GENERATION_CONTRACT_DRAFT.mdの追記と必要な引継ぎ記録のみ。製品・既存試験・合成データ・examples変更、実接続、全体再試験は今回の検証範囲外。Codexが修正版の採否と採用時の実装・Windows試験を担当する。通常Sonnet、Opus並列禁止。人間への追加判断事項は今回なし。gitとダッシュボードはClaude側の既定手順による。
+編集はEXIT_GENERATION_CONTRACT_DRAFT.mdの追記と必要な引継ぎ記録のみ。ops/common/runner/API・既存試験・合成データ・examples変更なし。実接続・全体再試験なし。Codexが修正版の採否と採用時の実装・Windows試験を担当する。人間への追加判断事項は今回なし。通常Sonnet、Opus並列禁止。gitとダッシュボードはClaude側の既定手順による。
 
-更新: 2026-09-28T08:48:58+09:00
+履歴: 開始未取得（最初の時計確認2026-09-28 08:53:53 JST） / 終了 2026-09-28T08:54:45.1490819+09:00 / v3不採用、完全性1点の契約修正をClaudeへ。
+更新: 2026-09-28T08:54:45.1490819+09:00
 
-<!-- handoff-ready: edcb84ead4eb6d6889fbbbfb86996d28226d26a8991578df8d9f750141f49e8f -->
+<!-- handoff-ready: fed56ba9192a4b83556744258b325c332f677a45fe354b44c437056b51c33809 -->
 
 ## 過去のB（実行対象外）
 

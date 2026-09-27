@@ -272,3 +272,17 @@ expected_qty == view.positions[code].qty（保有なしは 0）
 | 36 | SELL の価格のみ CORRECTION | 消費不変。数量訂正は台帳が拒否（試験は既存の拒否を確認するだけ） |
 
 更新時刻: 2026-09-28 08:52 JST。保存のみ。Codex の再判定を依頼。
+
+## Codex 改訂v3再判定（2026-09-28）
+
+**v3全体は不採用。build_exit_proposals / derive_holdings は未実装。** 残る不足は次の1点に限定する。公開proposal/noticeを入力に含めること、分割履歴を明示する方向、SELL数量訂正を正常系から除くD15-10は採用可能。取得日・配分・数量・指値の採用可能な規則を再設計する依頼ではない。
+
+1. **D15-08: outboxと残高照合は全通知集合の完全性を保証しない。**
+   - 既存runner.py:462–474は candidatesのINTENT保存 → Ledger.create_notice → APPROVED → outbox INSERT の順。PHASE2_INTEGRATION.md §5も別DBの非原子性と「APPROVED後、outbox前」の中断を明記している。runnerだけが通知を作る条件を守っていても、outboxにない通知が残る。約定0ならsnapshot＋BUY−SELLの照合値は変わらず、seq_before==seq_afterも成立する。特に未決SELLの存在をnotices集合から求めるとOPEN_SELL_EXISTSを見落とす。viewの予約数量による売却上限だけでは「未決SELLがあれば生成しない」を代替できない。
+   - 残高照合は純増減の検査であり、欠落の完全検出ではない。既知の古いBUYロットA=100に対し、一覧外SELL100がAを消費し、一覧外の新しいBUY100が成立した場合、view.qty=100、束のexpected_qty=100で一致する。reserved=0、seqも安定し得るが、束は古いAが残ると誤認し満了判定が変わる。D15-08の「runner外通知・通知欠落はすべて不一致」は成立しない。これはソースと式からの反例であり実Ledger実測ではない。
+
+必要な契約修正: 呼出側が全候補の永続記録（INTENTを含む）と初期外部注文を照合し、未完了run・台帳/記録の不確実な中断があれば生成前に拒否する条件を固定する。outboxだけを全通知台帳と呼ばない。runner外書込を禁止する信頼前提と、入力束だけで検出可能な不一致を分ける。相殺した欠落まで拒否を要求するなら、そのための独立した完全性根拠を入力契約に追加するか、既存公開APIで検証可能な対象に明示的に限定する。ops/private状態参照や未許可のrunner修正で補わない。固定例は「通知作成後outbox前の中断」と「欠落BUY/SELLの純増減0」を追加する。
+
+Windows PowerShellによるコード読取のみ。pytest未実施（不採用分岐、passed/skipped/failed/秒は未測定）。製品・既存試験・ops/common/examples無変更。上位設計書は指定相対パスに存在せず未読。本判断は現行runnerと既存直列化/中断契約への直接矛盾に限定した。サブエージェントなし（独立した実装作業なし）。
+依頼hash: 2aaea69f3412dcf6536b53001df8759e0fd9c46ff96852fa23d030252f8901e8。git・ダッシュボード・使用率確認は指定により未実施。人間への追加判断事項はなくQUESTIONS.mdは変更しない。次担当Claudeには入力束の完全性の独立確認・契約修正1件を依頼する。公開結果は最終報告で区別する。
+記録時刻: 2026-09-28T08:54:24.3425635+09:00
