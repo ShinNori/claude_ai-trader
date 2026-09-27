@@ -185,3 +185,15 @@ Claude が TEMP の修正案（sha256 1e7cf927…）を製品へバイト単位�
 既存試験 1 件（置換失敗時の tmp 残留）の期待を修正仕様に合わせて更新した。関連 12 ファイルを Windows で実測: 230 passed / 5 skipped / 0 failed / 8.22 秒、
 並行試験は 5 回反復で全通過。製品を Claude が書いたのは今回限りの例外で、役割分担（製品は Codex 所有）は変更しない。本マーカーはこの回答に基づく。
 <!-- handoff-questions: resolved -->
+
+## 2026-09-28 08:42 JST：EXIT契約採否・Git権限制約（未解決）
+
+依頼hash: `24dbcc16f2c032849ec2b534288f3f0ca72e1514df4a2a6dc0277c2d3d4f2e46`。対象HEAD: `599f803`。
+
+D15-01〜05の現行案は不採用。合算SELLのBUYロット別配分と取得日（effective_atとat）の区別が不足。採否・§6の4判断はEXIT_GENERATION_CONTRACT_DRAFT.md末尾へ保存。製品・試験は変更していない。Windows pytestは未実施、件数・秒は未測定。
+
+作業前のgit pullは `error: cannot open '.git/FETCH_HEAD': Permission denied` で失敗。本セッションの権限設定でD:\work\ai-trader\.gitは読取専用、権限昇格も利用不可。最新remoteとの同期確認・commit＋pushを完了できない。権限制約の迂回、ACL/所有者変更、別gitディレクトリへの付替えは行わない。
+
+必要な対応：通常のgit pull/commit/pushが可能な実行環境で、この依頼hashの担当を1つに絞って再開してください。再開時は本採否を読み、同期・記録の保存後、Claudeへ「ロット取得日と合算売却配分」の契約修正1点を渡す。製品実装を完了済みとして扱わない。
+
+自動実行規則の「人間の判断が必要ならQUESTIONS.mdに質問を書いて停止し、相手宛てBを更新・公開しない」に従い、両引き渡しMDは無変更、publishは未実行。解決マーカーは追加しない。使用率確認・実API・実審査LLM・LINE・証券接続・発注は行わない。

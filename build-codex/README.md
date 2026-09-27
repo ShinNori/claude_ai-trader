@@ -1471,3 +1471,10 @@ python -m aitrader.evidence_bundle_store_cli verify --id 381454c638620b9f9eb6655
 Claude実測の転記：関連12ファイル、230 passed / 5 skipped / 0 failed、8.22秒。Windows / Codex同梱Python 3.12.14、-p no:cacheprovider、basetempはDropbox外。
 Codex今回は照合と文書更新のみ。試験再実行なし（同一版の関連実測を共有し、任意の全体試験は省略）。製品・試験は無変更。契約優先節へ採用内容3行を追記。技術レビュー受領10/20を維持。
 次は引き渡し不要（R14-01受領・記録完了）。成果・履歴保存後にClaude宛てBを最後に更新しdev公開する。使用率確認なし。開始時刻未取得（最初の時計確認08:31:45 JST）、記録終了08:33 JST。
+
+## 2026-09-28 EXIT D15採否（Codex、ローカルHEAD 599f803）
+
+現行契約案は不採用。合算SELLのロット別数量配分が未定義で、entry_dateに用いるeffective_atも保留解決時刻になり得る。D15-02〜05の実装可能な部分と§6の4判断はEXIT_GENERATION_CONTRACT_DRAFT.md末尾に記録。Sol/medium 1体へ台帳公開APIの読取確認を委譲、Codex内確認でありClaude独立レビューではない。
+
+製品・試験無変更。Windows pytest（関連・全体）は不採用のため未実施、passed/skipped/failed/秒は未測定。git pullは.git/FETCH_HEAD Permission denied。実行環境で.gitが読取専用のためcommit/push未完了、QUESTIONS.mdへ環境復旧事項を保存。両引き渡しMD更新・publish未実施。次はGit書込み可能な環境で同期・保存を完了し、Claudeへ取得日と合算配分の契約修正1点を依頼する。工程3・案件全体とも未完了。
+ダッシュボード更新JSONはdashboard_update_exit_d15.jsonへBの既存先頭行を維持して保存。指定nodeコマンドの結果: 更新失敗: connect EACCES 157.7.184.24:443。更新成功とは扱わない。
