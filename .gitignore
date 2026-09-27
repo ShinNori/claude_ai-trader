@@ -12,3 +12,4 @@ tools/automation/watch_status.json
 .test-deps/
 .pytest-tmp/
 build-codex/.pytest-tmp/
+dashboard_update.json
