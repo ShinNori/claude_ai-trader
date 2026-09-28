@@ -195,3 +195,47 @@ adjusted = LedgerView(
 確認方法：Windows上のコード・契約の読取照合。製品・試験変更なし、pytest・Windows動作実測・全体試験は未実施（不採用時は依頼1と5のみ）。親が採否・文書、Sol 1体が読取実装可能性確認を担当。Claude独立確認済みとは扱わない。設計書は D:/work 直上には無く、従来の 999_投資関係 フォルダにある実在版の STOP/手仕舞い・12章を参照した。
 
 依頼hash: 34a887889a1d8feea9bc9637feeff437671c2a115d30f2922eede88c9864a6aa。
+
+
+---
+
+## 改訂 v2（2026-09-29、Codex 不採用 D16-R1 と局所整合 6 点への回答。本節が §1〜§8 と衝突する場合は本節を優先）
+
+### D16-R1 停止条件の適用対象（D16-01 と D16-04 の差替え）
+
+`STOP_ACTIVE` / `STOP_STATE_UNKNOWN` / `UNRESOLVED_LEDGER` は **BUY（NEW）候補にだけ**適用する。SELL（EXIT）候補は共通仕様フェーズ2 §4.1(8)(9)・`gate.py` の NEW/EXIT 分岐・`runner.py` の BUY 専用 STOP 再確認と同じく、STOP 中・未確認注文ありでも再開対象とし、所有の証拠（E1〜E6）・時刻・二承認・売却可能株数（除外 view）で判定する。復旧経路に独自の停止仕様を入れない（RUNNER_RECOVERY_PLAN「時刻・停止と未決事項」）。
+
+前提条件表（改）:
+
+| 条件 | 適用 | 理由コード |
+|---|---|---|
+| 同 run_id・入力不変・参照不変・執行日当日・`started_at ≤ now < 07:15` | BUY / SELL | 既存 `RunError` / `RESUME_WINDOW_CLOSED` |
+| journal 行の所有・hash・day・side 一致 | BUY / SELL | 既存 `RunError` |
+| 管理 STOP が有効でない・不明でない | **BUY のみ** | `STOP_ACTIVE` / `STOP_STATE_UNKNOWN`（SELL は gate 判定のとおり継続） |
+| 未確認約定・保留行がない | **BUY のみ**（gate の `unresolved_unconfirmed` は NEW だけを止める。EXIT は `run()` と同じ引数を渡し gate に委ねる） | `UNRESOLVED_LEDGER` |
+| 所有の証拠 E1〜E6 | BUY / SELL | `OWNERSHIP_UNPROVEN` |
+| seq 不変 | BUY / SELL | `SEQ_CHANGED` |
+
+C3（INTENT / APPROVED）の再確認項目も同じ区別: 時刻・所有・履歴・seq・二承認（両 judge 各 1 件・同候補 hash・APPROVE・同 run/mock・執行日受信・`now` 以前・締切前）は BUY/SELL 共通、STOP と未照合は BUY のみ。gate 全体の再評価はしない（Codex 判断 2 を採用）。
+
+### 局所整合（Codex の指摘をそのまま採る）
+
+1. **E6 の固定例**: 台帳は同 pid の重複を拒否するため「同 pid の別 SELL 通知」は起きない。E6 は「同 run の他の INTENT 候補で同銘柄のものが台帳に通知を持たない」と読む。別 run・APPROVED 済みの同銘柄予約は除外 view に残す（自分の分だけ引く）。固定例「外部書込の疑い」は「同 run の別 INTENT 候補（同銘柄・別 pid）が台帳に通知を持つ」に差し替え、期待は `OWNERSHIP_UNPROVEN`。
+2. **seq の読取時点**: `seq_before` は所有情報（`proposal`/`notice`/`view`）を読む**前**に取り、C2 は `set_notice_state(APPROVED)` の直前、C3 は journal トランザクションの直前に `ledger.seq() == seq_before` を照合する。T1 に依存する整合照合であり、台帳内の原子的比較更新（Tier B）の代替保証ではない。非協調 writer との競合窓が残ることを本文に明記する。
+3. **`runs.manifest` の更新**: `manifest.resumes` は成果物 JSON だけでなく journal の `runs.manifest` に保存し、C2/C3 の journal トランザクションを「outbox INSERT ＋ candidates UPDATE ＋ runs.manifest UPDATE」の 3 文で 1 トランザクションとする。途中失敗で再開記録だけが進まない。
+4. **C2 の元判定**: INTENT 行の `result` には元の gate 判定（`allowed=true`）が既にある。C2 の再評価結果は `gate` を置き換え、元判定は `resume.original_gate` に保存する。C3 は元 `gate` を保持し `resume.gate_reevaluated=false`。
+5. **failure.json**: 既存ラッパーを維持し、再開拒否時は `status=SYSTEM_ERROR`・`detail='NEEDS_RECONCILIATION: <reason_code>'`。読取診断の `classification` とは別物。成功した再試行の後に残る過去の failure.json を現在の失敗と解釈しない（`result.json` を正とする）。理由の優先順: 既存入力検査 → 対象/所有 → 時刻 → BUY の停止/未照合 → 二承認/再評価 → seq 照合。
+6. **既存 assert**: `test_runner.py:161`（INTENT なし）、`:184`（legacy C2）、`test_runner_crash_boundaries.py:77`（legacy C3）は「台帳だけに通知が存在」を期待している。本契約は **managed-v1 home（`managed_stop_policy` あり）に限定**して再開経路を有効にし、legacy home では従来どおり停止するため、この 3 件の期待値は変えない。managed-v1 の C2/C3 は新規試験で固定する。
+
+§9 の残り: 翌日予約は停止・保持（HISTORY_RECONCILED・自動解放・締切後 outbox 復元は未採用）、Tier B は今回移行しない（Codex 判断 3・4 を採用）。
+
+### 反証表の差替え・追加
+
+- 13 → 「STOP 有効／不明」は **BUY のみ** `STOP_ACTIVE` / `STOP_STATE_UNKNOWN`。SELL 候補の C2 は STOP 中でも再開され、gate の EXIT 判定に従う。
+- 20 → 「未確認約定あり」は **BUY のみ** `UNRESOLVED_LEDGER`。SELL は gate に委ねる（`RECONCILIATION_PENDING` は NEW 用の理由なので SELL では立たない）。
+- 9 → 「同 run の別 INTENT 候補（同銘柄・別 pid）が台帳に通知を持つ」→ `OWNERSHIP_UNPROVEN`。
+- 25（新）: legacy home（`managed_stop_policy` なし）での C2 → 従来どおり「台帳だけに通知が存在」で停止（既存 3 件の期待値が不変であることの確認）。
+- 26（新）: C2 の journal トランザクションで `runs.manifest` UPDATE に例外注入 → outbox・candidates も巻き戻る（`resumes` だけ進まない）。
+- 27（新）: 成功した再試行の後、過去の failure.json が残っていても `result.json` が正で、診断は失敗と解釈しない。
+
+更新時刻: 2026-09-29 08:55 JST。保存のみ。Codex の再判定を依頼。
