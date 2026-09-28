@@ -430,3 +430,42 @@ Codex の指摘どおり、runner の journal（`orchestration.sqlite`: runs / c
 固定例・反証表は v5 までのとおり（入力元が変わるだけで期待値は不変）。反証 45: `snapshot` を渡さずに呼ぶ → `SNAPSHOT_MISSING`、候補 0、台帳・journal 無変更。
 
 更新時刻: 2026-09-28 09:06 JST。保存のみ。Codex の再判定を依頼。
+
+## Codex 改訂v6再判定（2026-09-28）
+
+**v6を採用する。** 前回残件の入力元は、candidatesだけをjournalから読取り、snapshot / adjustmentsを呼出側の明示入力とすることで解消した。現行runnerの保存schema、INTENT先行永続化、outbox INSERTとAPPROVED更新の同一transaction、Ledgerの公開proposal/notice/view/unconfirmed/seqと矛盾しない。実装はbuild-codex内の独立した導出・生成APIに限定する。
+
+- v5のINTENT限定検査、EXTERNAL双方向照合、v4のT1/T2と検出保証の区別を維持する。runner外書込による確定済みBUY/SELLの相殺欠落まで検出する保証は追加しない。
+- snapshot未指定はSNAPSHOT_MISSING。現在保有や内部イベントからの補完は行わない。adjustmentsも明示入力で、runnerへの保存・接続は別工程。初期外部注文IDは呼出側が台帳と同じ順序（external-1から）で解決する。
+- 取得日・配分・分割・数量・指値・既存14項目hashは改訂済み規則を維持する。初期保有の取得日推定、保存mode、再送、実通信は今回採用しない。
+
+確認した一次資料は本契約、共通仕様フェーズ1/2、common/ISSUES.md、PHASE2_INTEGRATION.md、現行runner/packet/Ledger公開API。上位設計書は指定相対パスおよび本作業ツリーに存在せず未読であり、その全文を再確認済みとは扱わない。
+依頼hash: f933da63379c141869f7e70f32de33b436e3a7c79616d772245da67e931eb79f。採否記録時刻: 2026-09-28 09:10 JST。実装と実測結果は後続の確定記録へ記載する。
+
+### v6実装確定・Windows実測（2026-09-28 09:20 JST）
+
+`packet.build_exit_proposals`を追加し、`ExitBuildResult(proposals, excluded)`を返す。既存BUY生成・14項目hash・render_packetは無変更。
+`exit_holdings.derive_holdings(ledger, orchestration_path, snapshot, adjustments, as_of, *, max_attempts=3)`を新設し、`HoldingDerivationResult(holdings, reason_codes, observed_seq, candidate_ids, excluded)`を返す。`snapshot=None`はSNAPSHOT_MISSING。前提条件の失敗はholdings空とreason_codes、分割端数の銘柄除外はexcludedへ返す。呼出側はreason_codesが空であることを確認してholdingsを生成器へ渡し、導出側excludedと生成側excludedを併記する。例外を正常な候補0へ読み替えない。
+
+公開Ledger APIのみを使用し、journalはmode=roでcandidatesだけを取得、接続はcloseする。T1の直列化ロックと明示入力の保管責任は呼出側に残る。今回runnerへの接続・保存は実装していない。seq変化は最大3回読取りでSEQ_CHANGED。既知のCREATED/APPROVEDを含む未決SELLも抑止する。SELL消費は有効fillの時刻順、紐づかない売却のロット順はJST取得日・ID。分割はDecimalで累積し、銘柄合計の残高照合を先に行い、消費後のロット残に端数があればその銘柄を除外する。
+
+新規`tests/test_exit_generation_v6.py`は反証1〜45を複合ケース込み33試験で検証。16/17は実gate/Ledger、31〜45は実LedgerとTEMPのjournal、40は実runner.runによる2件の模擬通知作成を使用。38はv5の読み替え、24は単元150で200→150へ切捨て（配分100/50）。45は台帳seq・journal行/バイトhash不変を確認する。30件目安を超える理由は今回明示された45項目と、時刻/FIFO/分割境界の回帰を省略しないため。
+
+改訂固定例は7203の2ロット各100、held300/unattributed100、候補200株。snapshot_id=`a`×64、policy_version=`v1`を人工固定値とし、packet_hash=`3997d6f7c54aae594c7caf1036c93904633fbeaf662df77fa5f773362f18bbe7`を`tests/fixtures/exit_v6_expected.json`へ固定した。試験実行時の期待値再生成はしない。
+
+Windows 11 10.0.26200、Python 3.12.14、PowerShell、cwd=D:/work/ai-trader。環境変数はPYTHONDONTWRITEBYTECODE=1、PYTHONIOENCODING=utf-8、PYTHONPATH=ops;build-codex。DBはすべてDropbox外TEMP。
+
+- 初回関連一括: build-codex/tests・common/tests/phase2・ops/testsのtest_*.pyからファイル名にpacket/gate/ledger/runner/exitを含む既存27ファイルと新規EXIT（当時26試験）を選択。`python -m pytest <選択28ファイル> -q -ra -p no:cacheprovider --basetemp <TEMP内の専用ディレクトリ>`。409 passed / 0 skipped / 0 failed、44.27秒（プロセス実時間44.640秒）。後続の分割補強・受入追加前の一括実測であり、最終版全体結果とは呼ばない。
+- 最終版: `python -m pytest build-codex/tests/test_exit_generation_v6.py build-codex/tests/test_exit_pipeline.py build-codex/tests/test_exit_v4_external_contract.py -q -ra -p no:cacheprovider --basetemp "$env:TEMP\exit_v6_final_0920"`。41 passed / 0 skipped / 0 failed、3.57秒。新規33件＋既存EXIT8件。全体試験は未実施（独立API追加で、既存関連一括と変更範囲の再検証に限定）。初回と最終を足して件数を表記しない。
+- 開発中の局所実測も区別して保存: 新規26件0.62秒、packetとの局所74件1.58秒、補強後新規32件1.45秒、EXIT関連40件3.46秒、受入追加後新規33件1.40秒。最終41件が上記最終ファイルに対応する。
+
+最終SHA-256:
+
+| ファイル | SHA-256 |
+|---|---|
+| aitrader/packet.py | 259142dcc524ffc825c72353d31a7b1a373f5137e97da6e84f7f1da31f9ef0eb |
+| aitrader/exit_holdings.py | e06bdbc1031a170d9c051b7338c1b2dc4011d29c06ef45e741eacb578cd7de69 |
+| tests/test_exit_generation_v6.py | 1554bba00c50c49d8ca2dcfc59059b6e860dbf2657b3e0dd5be383e572f54183 |
+| tests/fixtures/exit_v6_expected.json | f06cf71f6c8f2b8fe8ed9b5dbea349a214995fc6e8af7171ce1773ee1cc14f8b |
+
+開始時に保存した既存試験/ops/common/runner/examples/自分宛てMDの231ファイルはhash変更なし。packet.pyの既存行削除・置換なし。QUESTIONSは変更せず、git・ダッシュボード・使用率確認は依頼どおり未実施。Sol 1体が実装・局所試験、親が採否・重要差分確認・統合検証・記録を担当した。Claude独立確認済みではない。次担当ClaudeにはEXIT生成の重要差分の独立確認1点を依頼する。

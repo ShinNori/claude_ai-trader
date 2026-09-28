@@ -1506,3 +1506,12 @@ v4不採用、残件1点。初期EXTERNAL注文はproposalが存在するがrunn
 
 v5のINTENT限定・EXTERNAL照合は採用可能。B項目2のsnapshot読取先には初期snapshotが保存されておらず、取得経路を含む全体は不採用（残件1点）。製品未実装、pytest未実施・件数/秒未測定。詳細はEXIT_GENERATION_CONTRACT_DRAFT.md末尾。次担当Claudeはsnapshotを呼出側明示入力とする等、入力元のみ整合させる。git・ダッシュボード・使用率確認なし。公開結果は最終報告で区別。
 記録: 2026-09-28T09:05:00.778983+09:00
+
+## 2026-09-28 EXIT v6採用・実装・Windows検証
+
+v6を採用し、`packet.build_exit_proposals`（追加のみ）と新規`exit_holdings.derive_holdings`を実装。snapshot/adjustmentsは呼出側の明示入力、journalはcandidatesのみ読取専用。未完了・不整合・snapshot欠落では生成を止め、未決SELL、ロット配分、分割、営業日満了、切上げ指値を検査する。反証1〜45を新規33試験で確認し、改訂固定例200株のpacket_hashを期待値JSONへ固定した。
+
+Windows 11/Python 3.12.14、DBはDropbox外TEMP。初回の新規＋packet/gate/ledger/runner関連一括は **409 passed / 0 skipped / 0 failed、44.27秒**。その後の分割補強・受入追加を含む最終EXIT関連は **41 passed / 0 skipped / 0 failed、3.57秒**（新規33＋既存8）。前者は最終版全体結果ではなく、全体試験は未実施。コマンド・環境・対象版hash・局所実測は[契約末尾](EXIT_GENERATION_CONTRACT_DRAFT.md)に記録した。
+
+既存試験/ops/common/runner/examples/自分宛てMDの231ファイルは開始時hashと一致、packet.py既存行は削除・置換なし。QUESTIONS無変更。実API/審査/LINE/証券/発注なし、git・ダッシュボード・使用率確認は今回指示で未実施。独立API追加の完了であり、runnerへの保存・生成接続や案件全体の完了ではない。
+次担当ClaudeはEXIT生成の重要差分を独立確認する1工程。[次回B](Claude引き渡しプロンプト.md)。依頼hash: f933da63379c141869f7e70f32de33b436e3a7c79616d772245da67e931eb79f。

@@ -63,28 +63,37 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: EXIT契約v5のsnapshot入力元とjournal読取指定の不整合を修正する
+今回の依頼: EXIT生成v6実装の重要差分を独立確認する
 
-TEAM_WORKFLOW.md優先。不採用分岐。v5のINTENT限定・EXTERNAL照合自体は採用可能。対象は入力元1点のみ。
+TEAM_WORKFLOW.md優先。今回Bはv6の実装完了後の独立確認1件。旧の不採用・入力元修正依頼は終了。製品修正はCodex担当、git・ダッシュボードはClaudeが代行する。
 
 【変更ファイル一覧】
-build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 52307 bytes / 2026-09-28T09:05:00.778983+09:00 / v5採否・入力元の不足1点と結果記録
-build-codex/README.md / 204789 bytes / 2026-09-28T09:05:00.780602+09:00 / v5採否・入力元の不足1点と結果記録
-build-codex/Claude_Opusキャッチボール.md / 9221 bytes / 2026-09-28T09:05:00.781609+09:00 / v5採否・入力元の不足1点と結果記録
-製品・試験は変更なし。対象は依頼記載HEAD 3bdd9e9以降の現作業ツリー（git再確認なし）。依頼hash: 354c4fd5f300e6e35fb2727f8526828d4c0e50a6182ed0322c14b26c9a8c2dae。
-依存参照: runner.py initialize_mock、journal schemaとmanifest（194–206、347–378）、ledger.py init_snapshot（1023–1028）。詳細は契約末尾。
+build-codex/aitrader/packet.py / 16598 bytes / 2026-09-28T09:16:05+09:00 / 追加のみ: EXIT生成・切上げ指値・合算配分
+build-codex/aitrader/exit_holdings.py / 11577 bytes / 2026-09-28T09:18:02+09:00 / 新規: 明示入力・candidates読取・前提条件・ロット導出/照合
+build-codex/tests/test_exit_generation_v6.py / 33000 bytes / 2026-09-28T09:19:36+09:00 / 新規33試験: 反証1〜45と時刻/FIFO/分割の回帰
+build-codex/tests/fixtures/exit_v6_expected.json / 509 bytes / 2026-09-28T09:18:03+09:00 / 改訂固定例200株のhashと反証番号一覧
+build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 60696 bytes / 2026-09-28T09:21:11+09:00 / 末尾v6採用・API・検証・最終hashの記録
+build-codex/README.md / 206410 bytes / 2026-09-28T09:21:32+09:00 / 末尾v6完了範囲・結果・次担当
+build-codex/Claude_Opusキャッチボール.md / 10138 bytes / 2026-09-28T09:21:32+09:00 / v6開始/終了・結果・次担当の履歴
+レビュー対象は上記最終ローカル作業ツリー。gitは今回指定で未実行。製品/試験4ファイルのSHA-256は契約末尾「v6実装確定・Windows実測」の表に固定。残る3ファイルは運用記録。依頼hash: f933da63379c141869f7e70f32de33b436e3a7c79616d772245da67e931eb79f。
+依存参照: runner.pyのjournal schema/INTENT→通知→APPROVED保存（347〜350、462〜474）、Ledger.proposal/notice/view/unconfirmed/seq、SPLIT/CORRECTIONの公開契約。ops/common/runner/既存試験/examples/自分宛てMDは無変更（開始時231ファイルhash一致）。
 
 【Codex 実測】
-2026-09-28 / PowerShell Get-Content・Select-Stringによるソース読取 / D:/work/ai-trader / pytest未実施（不採用分岐）、passed・skipped・failed・秒は未測定 / Windows PowerShell。関連一括・全体・固定packet_hash未実施。上位設計書は指定相対パスに存在せず未読。git・ダッシュボード・使用率確認なし。
+2026-09-28 / D:/work/ai-trader / Windows 11 10.0.26200、Python 3.12.14、PowerShell。
+環境変数 PYTHONDONTWRITEBYTECODE=1、PYTHONIOENCODING=utf-8、PYTHONPATH=ops;build-codex。DBはTEMP（Dropbox外）。
+初回関連一括: build-codex/tests・common/tests/phase2・ops/tests内test_*.pyで名前にpacket/gate/ledger/runner/exitを含む既存27ファイル＋新規EXIT（当時26試験）。python -m pytest <選択28ファイル> -q -ra -p no:cacheprovider --basetemp <TEMP専用ディレクトリ>。409 passed / 0 skipped / 0 failed / 44.27秒。補強前の結果であり最終版全体とは扱わない。
+最終版: python -m pytest build-codex/tests/test_exit_generation_v6.py build-codex/tests/test_exit_pipeline.py build-codex/tests/test_exit_v4_external_contract.py -q -ra -p no:cacheprovider --basetemp "$env:TEMP\exit_v6_final_0920"。41 passed / 0 skipped / 0 failed / 3.57秒（新規33＋既存8、skip理由なし）。局所の中間実測は契約末尾に別記、合算しない。全体試験は未実施（独立API追加のため関連検証に限定）。
+改訂固定例qty200のpacket_hash: 3997d6f7c54aae594c7caf1036c93904633fbeaf662df77fa5f773362f18bbe7。
 
 【今回 Claude に求める判断】
-1. B項目2はsnapshot入力をorchestration.sqliteから読取と指定するが、現行journalは初期positions/open_orders/atを保存していない。candidatesはjournalを読取専用で取得し、snapshotとadjustmentsは呼出側明示入力として渡す契約へ、D15-08と次回Bを整合させる案を確認・反映する。保存を追加する案なら保存契約と編集範囲を明記する。v5前提条件、T/D、取得日・配分・分割・数量・指値の再設計は不要。
+1. EXIT生成v6の重要差分を独立確認する。特に明示snapshot/adjustments＋読取専用candidatesという入力境界から、INTENT/EXTERNAL/未決SELL・残高照合・seq検査・ロット配分/分割を経て候補数量を作る経路が、採用契約を保っているかを確認する。改訂固定例と反証1〜45の試験も参照する。指摘は根拠・最小反例・影響を示し、製品や既存試験期待値は変更しない。再実測は指摘に直結する1点のみ（全体の繰返し不要）、必要な新規反証は独立ファイルtest_*_claude_contract.pyに限定する。
 
-編集は契約・引継ぎ文書のみ。ops/common/runner/既存試験/examples無変更。実接続なし。Codexが改訂後の実装可能性確認と採用時の実装・Windows試験を担当。人間の追加判断不要、QUESTIONS無変更。git・ダッシュボードはClaudeが代行。
-履歴: 開始2026-09-28 09:02 JST以降（正確な開始時計未取得） / 終了 2026-09-28T09:05:22.537489+09:00 / v5入力元の契約修正依頼。
-更新: 2026-09-28T09:05:22.537489+09:00
+初期保有の取得日推定、runnerへの保存/生成接続、実データ/実審査/LINE/証券/発注、T1違反の相殺欠落検出は今回の検証範囲外として返す。上位設計書はCodex環境の指定相対パス/本作業ツリーに無く未読であり、既存コード・共通仕様・採用契約に基づく実装である。実接続の承認や案件全体完了ではない。
+編集範囲: 独立確認記録・新規専用反証・Claude担当の結果/引継ぎ文書。製品/ops/common/runner/既存試験期待値/examplesは変更しない。人間の追加判断不要、QUESTIONS無変更。完了後は具体的な指摘の修正依頼、または独立確認結果と次の未接続工程をCodex宛てBへまとめる。
+履歴: 開始時刻未取得（最初の時計確認2026-09-28 09:09:32 JST、依頼発行09:06） / 終了 2026-09-28T09:22:14+09:00 / v6採用・実装・Windows検証完了、独立確認は未実施。
+更新: 2026-09-28T09:22:14+09:00
 
-<!-- handoff-ready: f663e30e3aad7dacfa8d5631827688f771813e78034e07d9b1d11d17f4cd6840 -->
+<!-- handoff-ready: f6b7de5f72e950cfd8b05912374fc87d291666782dd379aef974ef007ec74347 -->
 
 ## 過去のB（実行対象外）
 
