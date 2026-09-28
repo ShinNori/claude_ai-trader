@@ -414,3 +414,19 @@ v5で修正されたrunner.py:468–474のoutbox INSERTとAPPROVED更新の同�
 Windows PowerShellで現行ソースとschemaを読取確認。pytest未実施（不採用分岐。passed/skipped/failed/秒は未測定）、固定hash未作成。製品・既存試験・ops/common/runner/examples・自分宛てMD無変更。上位設計書は指定相対パスに存在せず未読。本判定は現行保存内容と指定取得経路の直接矛盾に限定。人間の追加判断は不要で、Claudeへの技術契約修正依頼のためQUESTIONS.mdは変更しない。独立実装作業がなく子エージェントなし。git・ダッシュボード・使用率確認は今回指示により未実施。
 依頼hash: 354c4fd5f300e6e35fb2727f8526828d4c0e50a6182ed0322c14b26c9a8c2dae。
 記録時刻: 2026-09-28T09:05:00.778983+09:00
+
+
+---
+
+## 改訂 v6（2026-09-28、v5 再判定の残り 1 点「スナップショット入力の取得経路」への回答。D15-08 の入力元だけを明確化）
+
+Codex の指摘どおり、runner の journal（`orchestration.sqlite`: runs / candidates / outbox）には `init_snapshot` へ渡した positions / open_orders / at は保存されておらず、`mock-runner.json` にも無い。依頼文（B 項目 2）の「snapshot も同じ journal から読む」が誤りで、契約本文（D15-08 表「runner が init_snapshot に渡した入力の保存値」）と食い違っていた。次のとおり固定する。
+
+- **`candidates` 表**（未完了 run の判定・`candidate_ids` の runner 由来部分）: `orchestration.sqlite` を**読取専用**で開いて読む。
+- **`snapshot`（positions / open_orders / at）と `adjustments`（SPLIT 記録）**: **呼出側が明示入力として渡す**。`derive_holdings` はこれらを取得しに行かない。runner がこれらをどこに永続化するか（例: journal への新表）は **runner の別契約**であり、本契約の範囲外。今回の実装と試験では、呼出側（試験コード・将来の runner）が `init_snapshot` / `adjust` に渡した値をそのまま渡す。
+- `Ledger.view` の現在保有や `EXTERNAL` 通知からスナップショットを逆算して補完しない（独立した入力との照合という根拠を失うため）。渡されなければ `SNAPSHOT_MISSING` で当日生成を行わない。
+- `snapshot.open_orders` の各要素は `init_snapshot` に渡した形（`proposal_id` が null なら台帳の付番 `external-{i}` を呼出側が同じ順序で付けて渡す）。EXTERNAL 照合（v5）はこの ID で行う。
+
+固定例・反証表は v5 までのとおり（入力元が変わるだけで期待値は不変）。反証 45: `snapshot` を渡さずに呼ぶ → `SNAPSHOT_MISSING`、候補 0、台帳・journal 無変更。
+
+更新時刻: 2026-09-28 09:06 JST。保存のみ。Codex の再判定を依頼。
