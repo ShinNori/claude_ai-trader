@@ -159,3 +159,29 @@ events.json を渡さない銘柄は `UNKNOWN` になりゲートで保留され
 | 期限切れ通知への CSV | 適用する（EXPIRED ≠ 取消） |
 | `balance_at(at)` | 各保存時点の残高要約（cash / reserved / positions）を ledger_events に記録し、`at` 以前の最新要約を返す。約定ロジックの再実行はしない |
 | 敵対試験 | 23 件（REJECTED 通知への CSV、保有なし SELL、qty 0/負、naive datetime、同一呼び出し内の重複 id、残数量超過、同一証券IDの別銘柄、pending→LINE→APPLY の二重計上防止、余力負）。実装バグ 0 件 |
+
+### 他 PC での起動（2026-09-28 追記）
+
+前提: Python 3.11 以上と git。clone は **Dropbox の外**に置く（`../Claude_Opus引き継ぎ.md` の PC 移行メモと同じ）。ネットワークは pip だけ使う（J-Quants・LLM・LINE・証券には接続しない）。
+
+```powershell
+git clone https://github.com/ShinNori/claude_ai-trader.git D:\work\ai-trader
+cd D:\work\ai-trader
+git checkout claude/auto-investment-system-qtxzkv
+cd build-claude
+powershell -ExecutionPolicy Bypass -File setup.ps1                     # venv 作成 → pip → テスト 208 件 → smoke.py
+# 実行時データの置き場を変える: -Home D:\ai-trader-home   テストを飛ばす: -SkipTests   初期現金: -Cash 3000000
+```
+
+```bash
+bash setup.sh [--home ~/ai-trader-home] [--cash 3000000] [--skip-tests]   # Linux / macOS
+```
+
+`smoke.py` は合成データで init-db → load-synthetic → packets → events.json 生成 → ledger-init → daily（dry-run）→ daily --execute（リハーサル時刻 2025-06-09 08:30）→ ledger-status を通し、最後に `OK` を出す。既存の DB・台帳があれば作り直さない。Linux コンテナの新規 venv で 35 秒（テスト除く）。
+
+| 置き場 | 内容 |
+|---|---|
+| `AI_TRADER_HOME`（既定 Windows: `%LOCALAPPDATA%\ai-trader-claude`、Linux: `~/.ai-trader-claude`） | `market.duckdb`、`ledger.sqlite`、`outbox/`、`receipts/`、`events.json`。Git 管理外、Dropbox の外 |
+| `build-claude/.env` | J-Quants トークン（任意）。`.env.example` を setup がコピーする |
+
+Windows で確認済みの依存: 標準ライブラリの sqlite3 / subprocess、pandas / duckdb の wheel。CP932 の CSV は `ledger-import-csv` が自動判別する。テストの外部コマンドは `sys.executable` を使うので `sleep` 等の Unix コマンドに依存しない。

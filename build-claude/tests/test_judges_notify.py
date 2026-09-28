@@ -1,3 +1,4 @@
+import sys
 import json
 from datetime import date, datetime, timedelta
 
@@ -144,7 +145,7 @@ def test_command_judge_success():
 
 def test_command_judge_timeout_returns_invalid():
     p = make_proposal()
-    j = CommandJudge("claude", ["sleep", "5"], timeout_s=0.5)
+    j = CommandJudge("claude", [sys.executable, "-c", "import time; time.sleep(5)"], timeout_s=0.5)
     verdicts = run_judges(p, [j], NOW)
     assert verdicts[0].decision == "INVALID"
 

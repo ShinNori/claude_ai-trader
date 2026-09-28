@@ -7,3 +7,4 @@ results/*/equity.csv
 ledger.sqlite
 outbox/
 receipts/
+.venv/
