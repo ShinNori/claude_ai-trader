@@ -399,3 +399,18 @@ Codex の指摘どおり、`candidate_ids` の全 pid に「通知あり・outbo
 反証 38（v4）は「INTENT 行なし・通知あり・outbox なし」を模擬していたが、現行 runner ではこの状態は `state='INTENT'` としてしか現れないため、**38 は「`state='INTENT'` の行があり通知も存在する」に読み替える**（37 と同じ経路。期待は `RUN_INCOMPLETE`）。
 
 更新時刻: 2026-09-28 09:02 JST。保存のみ。Codex の再判定を依頼。
+
+
+## Codex 改訂v5再判定（2026-09-28）
+
+**v5のINTENT限定判定・EXTERNAL双方向照合は採用可能。ただし今回Bの取得経路を含む実装契約全体は不採用。残件1点。** build_exit_proposals / derive_holdings は未実装。
+
+1. **B項目2が指定するsnapshotのjournal読取は、現行runnerの保存内容では実装できない。** runner.py:347–350 の orchestration.sqlite は runs(id,hash,manifest,result)、candidates(pid,hash,day,side,state,result,owner)、outbox(key,body) の3表。manifest（:361以降）は実行日・評価・hash等であり、init_snapshotへ渡したpositions/open_orders/atを保持しない。initialize_mock（:194–206）はLedger.init_snapshot(cash, positions, [], at)を呼び、mock-runner.jsonにはmode/versionしか保存しない。初期snapshotはledger.sqliteのSNAPSHOTイベントへ保存される（ledger.py:1023–1028）が、今回の「同じjournalから読取」「公開APIのみ」「runner/ops無変更」とは異なる取得経路である。Ledger.viewの現在保有やEXTERNAL通知の逆算で初期snapshotを補完すると、独立した入力との照合というv5の根拠を失う。
+
+必要な修正は入力元1点のみ: candidatesはorchestration.sqliteを読取専用で読む一方、snapshot（必要なadjustmentsを含む束）は呼出側が明示入力として渡す、とB項目2とD15-08を整合させる案を推奨。初期入力を保存する新たなjournal書込を選ぶ場合は、その保存契約と編集許可が別途必要。今回、存在しない表を独自に定義して読取実装したり、ledger内部イベント走査に置き換えたりしない。
+
+v5で修正されたrunner.py:468–474のoutbox INSERTとAPPROVED更新の同一トランザクションは確認済み。INTENT検査のみで未完了を拒否する点、EXTERNALを接頭辞で判定しない点、正常外部注文にoutboxを要求しない点に追加の異議はない。T/Dの区別、取得日・配分・分割・数量・指値の採用可能な規則を再設計する依頼ではない。
+
+Windows PowerShellで現行ソースとschemaを読取確認。pytest未実施（不採用分岐。passed/skipped/failed/秒は未測定）、固定hash未作成。製品・既存試験・ops/common/runner/examples・自分宛てMD無変更。上位設計書は指定相対パスに存在せず未読。本判定は現行保存内容と指定取得経路の直接矛盾に限定。人間の追加判断は不要で、Claudeへの技術契約修正依頼のためQUESTIONS.mdは変更しない。独立実装作業がなく子エージェントなし。git・ダッシュボード・使用率確認は今回指示により未実施。
+依頼hash: 354c4fd5f300e6e35fb2727f8526828d4c0e50a6182ed0322c14b26c9a8c2dae。
+記録時刻: 2026-09-28T09:05:00.778983+09:00

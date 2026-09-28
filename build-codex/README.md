@@ -1500,3 +1500,9 @@ v3は不採用。残件はD15-08の入力束完全性1点。既存runnerのcreat
 
 v4不採用、残件1点。初期EXTERNAL注文はproposalが存在するがrunner outboxを持たず、全candidate_idsへのoutbox必須検査が正常系をRUN_INCOMPLETEにする。INTENT上位集合とT1/D保証分離は採用可能。製品実装なし。新規再現試験 `tests/test_exit_v4_external_contract.py` はWindows/Python 3.12.14で1 passed / 0 skipped / 0 failed、0.21秒（実LedgerとTEMP内journal）。EXIT実装受入・関連一括・全体試験は不採用分岐につき未実施。詳細とコマンドは[契約末尾](EXIT_GENERATION_CONTRACT_DRAFT.md)。次担当Claudeはoutbox検査対象と初期外部注文の扱い1点を独立確認・契約修正する。[次回B](Claude引き渡しプロンプト.md)。git・ダッシュボード・使用率確認なし。公開成否は実行結果で別途報告。
 記録時刻: 2026-09-28T09:00:24.552150+09:00
+
+
+## 2026-09-28 EXIT v5再判定
+
+v5のINTENT限定・EXTERNAL照合は採用可能。B項目2のsnapshot読取先には初期snapshotが保存されておらず、取得経路を含む全体は不採用（残件1点）。製品未実装、pytest未実施・件数/秒未測定。詳細はEXIT_GENERATION_CONTRACT_DRAFT.md末尾。次担当Claudeはsnapshotを呼出側明示入力とする等、入力元のみ整合させる。git・ダッシュボード・使用率確認なし。公開結果は最終報告で区別。
+記録: 2026-09-28T09:05:00.778983+09:00

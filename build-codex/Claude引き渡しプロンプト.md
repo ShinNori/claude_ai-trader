@@ -63,31 +63,28 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: EXIT契約v4の外部注文とoutbox必須検査の矛盾を独立確認し契約を修正する
+今回の依頼: EXIT契約v5のsnapshot入力元とjournal読取指定の不整合を修正する
 
-TEAM_WORKFLOW.mdを優先。v4不採用分岐。旧Aのops修正・全体試験は対象外。
+TEAM_WORKFLOW.md優先。不採用分岐。v5のINTENT限定・EXTERNAL照合自体は採用可能。対象は入力元1点のみ。
 
 【変更ファイル一覧】
-build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 45332 bytes / 2026-09-28T09:00:24.552150+09:00 / v4採否・反例再現・結果記録
-build-codex/tests/test_exit_v4_external_contract.py / 2010 bytes / 2026-09-28T08:59:52.871018+09:00 / v4採否・反例再現・結果記録
-build-codex/README.md / 204207 bytes / 2026-09-28T09:00:24.552150+09:00 / v4採否・反例再現・結果記録
-build-codex/Claude_Opusキャッチボール.md / 8757 bytes / 2026-09-28T09:00:24.552150+09:00 / v4採否・反例再現・結果記録
-製品・既存試験無変更。依頼hash: 211ba0b3f6e00c4738f546a357e39bfd765e3441191cf27728ceaad9671c276c。対象は現作業ツリー、依頼記載619287a以降をgitで再確認していない。B自身は対象一覧外。
-依存参照: ops/aitrader_ops/ledger.py:317–338,1098–1103,1129–1132、build-codex/aitrader/runner.py:462–474、RUNNER_RECOVERY_PLAN.md「状態ごとの案」。契約末尾のv4再判定を読む。
+build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 52307 bytes / 2026-09-28T09:05:00.778983+09:00 / v5採否・入力元の不足1点と結果記録
+build-codex/README.md / 204789 bytes / 2026-09-28T09:05:00.780602+09:00 / v5採否・入力元の不足1点と結果記録
+build-codex/Claude_Opusキャッチボール.md / 9221 bytes / 2026-09-28T09:05:00.781609+09:00 / v5採否・入力元の不足1点と結果記録
+製品・試験は変更なし。対象は依頼記載HEAD 3bdd9e9以降の現作業ツリー（git再確認なし）。依頼hash: 354c4fd5f300e6e35fb2727f8526828d4c0e50a6182ed0322c14b26c9a8c2dae。
+依存参照: runner.py initialize_mock、journal schemaとmanifest（194–206、347–378）、ledger.py init_snapshot（1023–1028）。詳細は契約末尾。
 
 【Codex 実測】
-2026-09-28 / python -m pytest build-codex/tests/test_exit_v4_external_contract.py -q -p no:cacheprovider / D:/work/ai-trader（PYTHONPATHはopsとbuild-codex、PYTHONDONTWRITEBYTECODE=1） / 1 passed・0 skipped・0 failed / 0.21秒 / Windows 11 build 26200、Python 3.12.14 / skipなし。
-実Ledger公開APIとTEMP内の実journalで、初期EXTERNAL SELLにproposalが存在しunconfirmedにも含まれる一方、INTENTとoutboxが空であることを確認。EXIT関数は未実装で実行していない。関連一括・全体は不採用分岐のため未実施。上位設計書は指定相対パスに存在せず未読。git・ダッシュボード・使用率確認なし。
+2026-09-28 / PowerShell Get-Content・Select-Stringによるソース読取 / D:/work/ai-trader / pytest未実施（不採用分岐）、passed・skipped・failed・秒は未測定 / Windows PowerShell。関連一括・全体・固定packet_hash未実施。上位設計書は指定相対パスに存在せず未読。git・ダッシュボード・使用率確認なし。
 
 【今回 Claude に求める判断】
-1. D15-08改2のoutbox必須対象だけを独立確認・修正する。candidate_idsはsnapshot.open_ordersを含むため、正常な初期外部注文でもproposal存在/outboxなしとなりRUN_INCOMPLETEで全体拒否し、反証41のOPEN_SELL_EXISTSと矛盾する。完全性の和集合は維持し、runner通知のoutbox検査とsnapshot外部注文の由来照合を区別する条件を固定する。初期未決SELLと確定済み外部注文の期待値を記載。T1違反検出の追加要求や、取得日・配分・分割・数量・指値の再設計は不要。
+1. B項目2はsnapshot入力をorchestration.sqliteから読取と指定するが、現行journalは初期positions/open_orders/atを保存していない。candidatesはjournalを読取専用で取得し、snapshotとadjustmentsは呼出側明示入力として渡す契約へ、D15-08と次回Bを整合させる案を確認・反映する。保存を追加する案なら保存契約と編集範囲を明記する。v5前提条件、T/D、取得日・配分・分割・数量・指値の再設計は不要。
 
-編集は契約文書への追記と必要な引継ぎ記録のみ。ops/common/runner/API・既存試験・合成データ・examplesは変更しない。実接続・全体再試験なし。Codexが改訂採否と採用時の実装・Windows試験を担当する。人間の追加判断事項なし、QUESTIONS無変更。通常Sonnet、Opus並列禁止。gitとダッシュボードはClaude側の既定手順による。
+編集は契約・引継ぎ文書のみ。ops/common/runner/既存試験/examples無変更。実接続なし。Codexが改訂後の実装可能性確認と採用時の実装・Windows試験を担当。人間の追加判断不要、QUESTIONS無変更。git・ダッシュボードはClaudeが代行。
+履歴: 開始2026-09-28 09:02 JST以降（正確な開始時計未取得） / 終了 2026-09-28T09:05:22.537489+09:00 / v5入力元の契約修正依頼。
+更新: 2026-09-28T09:05:22.537489+09:00
 
-履歴: 開始未取得（最初の時計確認2026-09-28 08:59:19 JST） / 終了 2026-09-28T09:00:52.167642+09:00 / v4不採用、外部注文1点の契約修正をClaudeへ。
-更新: 2026-09-28T09:00:52.167642+09:00
-
-<!-- handoff-ready: e0f78177ddb98e9c81b514d04eaa2f5821893d118a4dc56d514aea0637149378 -->
+<!-- handoff-ready: f663e30e3aad7dacfa8d5631827688f771813e78034e07d9b1d11d17f4cd6840 -->
 
 ## 過去のB（実行対象外）
 
