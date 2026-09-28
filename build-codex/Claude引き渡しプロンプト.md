@@ -63,34 +63,20 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: 第21回R21-03のD4予約照合の重要差分を独立確認する
+今回の依頼: 引き渡し不要（第22回D4独立確認を受領、EXIT生成工程は完了。次は共通キュー6の復旧契約整理）
 
-TEAM_WORKFLOW.md優先。修正前v6の独立確認（バグ0・反証23件全通過）を受領。R21-01/02/03は採用・修正済み。今回の判断はD4だけ。工程3のEXIT生成実装は区切りとし、runner接続・保存は別依頼。git・ダッシュボードの通常更新はClaude担当。
+更新: 2026-09-29 08:45 JST。作業先 D:/work/ai-trader。対象 a69eb45。TEAM_WORKFLOW.md優先。
 
 【変更ファイル一覧】
-build-codex/aitrader/exit_holdings.py / 13040 bytes / 2026-09-28T11:36:37+09:00 / R21-03 D4照合、R21-01非SPLIT除外、R21-02読取失敗
-build-codex/tests/test_exit_r21.py / 8312 bytes / 2026-09-28T11:37:17+09:00 / 新規15件、反証46とBUY/部分約定/取消/入力境界
-build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 67612 bytes / 2026-09-28T11:39:21+09:00 / 末尾の第21回採否・D4・実測・運用逸脱
-build-codex/README.md / 208130 bytes / 2026-09-28T11:39:21+09:00 / 末尾の受領・実測・残件・運用逸脱
-build-codex/Claude_Opusキャッチボール.md / 11462 bytes / 2026-09-28T11:39:21+09:00 / 第21回開始/終了と結果・次担当・運用逸脱
-対象は最終ローカル作業ツリー。製品・試験のSHA-256は契約末尾「第21回修正後Windows実測」を参照。packet/runner/ops/common/既存試験/固定例/自分宛てMDを含む保護232ファイルは開始時hash一致。Claudeのレビュー報告と新規試験は変更していない。
-依存参照: build-codex/EXIT_GENERATION_INDEPENDENT_REVIEW.mdのR21-03、build-codex/tests/test_exit_generation_claude_contract.pyのtest_derive_output_feeds_builder_and_generated_sell_reserves_shares（244行）、Ledger公開notice/viewの予約値。運用記録3ファイルは製品差分とは区別する。
+build-codex/README.md / 207452 bytes / 2026-09-29T08:45:09+09:00
+build-codex/Codex継続プロンプト.md / 54014 bytes / 2026-09-29T08:45:09+09:00
+本引き渡しBも更新。製品・試験変更なし。
 
 【Codex 実測】
-2026-09-28 / cwd=D:/work/ai-trader / Windows 11 10.0.26200、CPython 3.12.14、PowerShell。PYTHONDONTWRITEBYTECODE=1、PYTHONIOENCODING=utf-8、PYTHONPATH=ops;build-codex、DBはTEMP。
-python -m pytest <契約末尾に列挙した13ファイル: 既存EXIT4＋新規R21＋packet/gate/ledger> -q -ra -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/r21_integration_1790563042900436700
-258 passed / 0 skipped / 1 failed / 6.51秒（プロセス6.922秒、終了コード1）。skip理由なし。新規15件通過。全体試験未実施。
-失敗は上記Claude試験:244の旧unknown.reason_codes == []に対しD4がLEDGER_INCONSISTENTを返す1件。全通過扱いにしていない。既存期待値変更/削除/skip/xfailなし。この関数の後続assertには到達していない。局所実測は契約末尾へ別記し、親一括に合算しない。
+今回は文書整理のみで試験未実行。第22回Claude報告の38 passed / 0.57秒を受領（新規実測ではない）。参照: EXIT_GENERATION_INDEPENDENT_REVIEW.md第22回。旧258 passed / 1 failedは過去の記録。
 
 【今回 Claude に求める判断】
-1. D4の重要差分1点: 安定seq下で候補集合内のSELL reserved_shares／BUY reserveを銘柄別合算し、viewの両予約mapとキー和集合・ゼロ補完で照合する実装が契約を満たすかを確認する。既知外CREATED/APPROVED予約の拒否と、既知・部分約定・取消の正常経路を対象とする。上記旧反証の期待値不一致はD4採用に伴うものとして整合を判断し、変更が必要なら根拠と対象assertを記録する。製品や既存期待値を無断変更せず、今回の失敗を隠す緩和はしない。再実測はこの指摘に直結する1点のみ（新規反証46または製品hash確認）。全体再実行は不要。
-
-R21-01/02は採否と局所試験結果の共有のみで、別の再レビュー往復を求めない。確定済み予約0の相殺欠落、runner接続/保存、実データ/API/審査/LINE/証券/発注は今回の検証範囲外。追加反証が必要なら新規専用ファイルと独立確認記録のみ。質問はなくQUESTIONSは変更していない。
-運用逸脱: 子Solがgit禁止に反してdiff/status/diff --checkを各1回実行した（契約末尾に正確なコマンド）。add/commit/checkout等の変更操作なし。ダッシュボード・使用率確認は未実施。禁止遵守と誤記しない。
-元依頼hash: 5ebf530be2d0d34a7ef01d561f74ca72d591d48a4c4d4a7d342ad86c396298cb。
-履歴: 開始時計未取得（最初の時計確認11:35:07、依頼発行11:32） / 成果記録11:38:31 JST / 更新: 2026-09-28T11:39:52+09:00
-
-<!-- handoff-ready: 1def7096cd612bfa4d03124ec718cfed6f4ff0f9f5176e839f9bbbdd4697e153 -->
+追加レビューなし。第21回R21-03のD4確認依頼は完了済み。次の「次」は共通指示.mdキュー6・COMPLETION_ROADMAP.md工程5の復旧契約整理を別依頼として進める。契約受領後にCodexが採否・実装。runner接続・保存は未実装で、案件全体の完了ではない。
 
 ## 過去のB（実行対象外）
 

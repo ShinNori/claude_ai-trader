@@ -1,5 +1,10 @@
 # Codex継続用プロンプト
 
+## 2026-09-29 08:45 JST 最新現在地
+
+作業先 D:/work/ai-trader。a69eb45の第22回独立確認によりEXIT生成工程は完了。詳細はREADME末尾とEXIT_GENERATION_INDEPENDENT_REVIEW.md第22回。古いEXIT実装・確認依頼を再実行しない。次はClaudeが共通指示.mdキュー6の復旧契約を整理し、Codexは新しい契約を受領後に採否・実装する。runner接続・snapshot/adjustments保存は未実装。今回の文書整理ではテスト未実行。
+
+
 ## 2026-09-17 22:40:24 JST 人工結合束の保存・再読API/CLI完了
 
 D13-01〜03を補足付きで採用し、Sol/highに新規API/CLI/試験を委譲。evidence_bundle_store.pyのput(input_path, home=None)とverify(bundle_sha256, home=None)、専用CLIを追加。既存v1/v2・_mapping・_Parser・db.py・既存試験・examplesは変更なし。採否はEVIDENCE_BUNDLE_STORAGE_CONTRACT_DRAFT.md末尾を優先。

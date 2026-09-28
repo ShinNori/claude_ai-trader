@@ -1525,3 +1525,10 @@ Windows関連13ファイル実測: **258 passed / 0 skipped / 1 failed、6.51秒
 
 
 運用逸脱の開示: 子Solが明示されたgit禁止に反し、`git diff -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git status --short -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git diff --check -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`を各1回実行した。差分/状態確認目的で、add/commit/checkout/reset等の変更操作は実施していない。禁止遵守とは報告しない。判明後は追加操作を停止させた。ダッシュボードと使用率確認は未実施。
+
+
+## 2026-09-29 08:45 JST 第22回受領・EXIT生成工程の区切り
+
+対象コミット a69eb45。EXIT_GENERATION_INDEPENDENT_REVIEW.md 第22回により、R21-01〜03とD4予約照合の独立確認完了を受領。Claudeが旧期待値1件を更新し、Claude23件＋Codex15件は38 passed / 0.57秒（Claude報告値）。旧258 passed / 1 failedの記録は当時の実測として保持する。今回は文書のみ更新し、製品・試験変更およびpytest再実行なし。
+
+次担当はClaude。共通指示.mdキュー6・COMPLETION_ROADMAP.md工程5に基づき、異常終了・PC停止からの復旧契約を整理する。Codexは新契約受領後に採否・実装。runner接続とsnapshot/adjustments保存は未実装であり、案件全体は進行中。古いD4レビュー依頼は再実行しない。
