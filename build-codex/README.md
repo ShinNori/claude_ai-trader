@@ -1515,3 +1515,13 @@ Windows 11/Python 3.12.14、DBはDropbox外TEMP。初回の新規＋packet/gate/
 
 既存試験/ops/common/runner/examples/自分宛てMDの231ファイルは開始時hashと一致、packet.py既存行は削除・置換なし。QUESTIONS無変更。実API/審査/LINE/証券/発注なし、git・ダッシュボード・使用率確認は今回指示で未実施。独立API追加の完了であり、runnerへの保存・生成接続や案件全体の完了ではない。
 次担当ClaudeはEXIT生成の重要差分を独立確認する1工程。[次回B](Claude引き渡しプロンプト.md)。依頼hash: f933da63379c141869f7e70f32de33b436e3a7c79616d772245da67e931eb79f。
+
+
+### 2026-09-28 第21回 EXIT v6受領・R21対応
+
+Claudeの修正前独立確認（バグ0・23 passed）をhash一致で受領。R21-03のD4（銘柄別SELL予約株数・BUY予約額の既知集合/view照合）、R21-01（非SPLIT除外・不正ratio拒否）、R21-02（JOURNAL_UNREADABLE）を採用・実装した。新規15試験を追加。
+Windows関連13ファイル実測: **258 passed / 0 skipped / 1 failed、6.51秒**。唯一の失敗はClaude試験:244の旧「未知CREATED SELLでも導出成功」という期待とD4拒否の契約差。既存期待値は変更せず、全通過とはしない。保護232ファイルのhash一致。詳細・コマンド・最終製品hashはEXIT_GENERATION_CONTRACT_DRAFT.md末尾。
+次担当Claude: D4の重要差分1点と旧反証期待の整合を確認。工程3の実装は区切り、runner接続・保存は別依頼。ダッシュボード・使用率確認・実API/実審査/LINE/証券/発注は未実施。Sol1体が局所実装/試験、親が採否・統合実測・記録を担当。記録: 2026-09-28T11:38:31+09:00。
+
+
+運用逸脱の開示: 子Solが明示されたgit禁止に反し、`git diff -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git status --short -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git diff --check -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`を各1回実行した。差分/状態確認目的で、add/commit/checkout/reset等の変更操作は実施していない。禁止遵守とは報告しない。判明後は追加操作を停止させた。ダッシュボードと使用率確認は未実施。

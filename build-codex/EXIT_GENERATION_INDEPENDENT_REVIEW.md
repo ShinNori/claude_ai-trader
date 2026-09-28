@@ -74,7 +74,17 @@ ea53ed21720c2b65731adc076d0a9dc44cb36f19d870c9f289cde404f0fc2bfc  tests/test_exi
 
 runner への接続（snapshot / adjustments の永続化）、保存 mode、再送、実データ、実通信。Codex の 33 試験の本文は並行部分以外読んでいない。
 
-終了時刻: 2026-09-28 11:32 JST
+## 追補（第22回、2026-09-28 11:41 JST）: R21-03 の D4（予約照合）実装の独立確認
+
+Codex は R21-01〜03 を採用し、`exit_holdings.py` に D4 を実装した（差分は当方が読取）。確認結果は**契約と一致**:
+- 既知集合（`candidate_ids`）内の SELL 通知の `reserved_shares` と BUY 通知の `reserve` を銘柄別に合算し、`view.reserved_shares` / `view.reserved_positions` とキーの和集合・ゼロ補完で比較。不一致は `LEDGER_INCONSISTENT`。安定 seq の読取内で行われ、EXTERNAL（スナップショット由来）も既知集合に含まれるため誤検出しない。
+- R21-01: `kind` が SPLIT 以外の調整は無視（`kind` 欠落は SPLIT 扱い）。不正 ratio は `DecimalException` を捕捉して `LEDGER_INCONSISTENT`。
+- R21-02: journal 不在・表なしは `JOURNAL_UNREADABLE`（台帳に触れる前に返す）。
+- Codex の新規試験 7 件（反証 46 を含む）は上記経路を固定している。
+
+当方の反証 1 件（既知外の CREATED SELL は導出が通り生成側で止まる）は修正前の挙動を固定していたため、D4 採用後の期待値（`LEDGER_INCONSISTENT`）へ更新した（変更は当方のファイルのみ。対象 assert は `test_derive_output_feeds_builder_and_generated_sell_reserves_shares` の既知外 CREATED SELL の 1 箇所）。更新後、当方 23 件＋Codex の R21 試験 15 件を同時実行して `38 passed / 0.57 秒`。追加の指摘なし。工程 3 の EXIT 生成はここで区切り。
+
+終了時刻: 2026-09-28 11:32 JST（第21回）／ 11:41 JST（第22回 追補）
 次に渡す一文（コピー用）:
 ```text
 ai-trader の作業フォルダで、Codex引き渡しプロンプト.md を読み、「A. 固定プロンプト」と「B. 今回の依頼」に従い、第21回 EXIT 生成 v6 実装の独立確認（バグ 0、反証 23 件全通過）の受領と、R21-03（reserved_shares 照合で既知外の未決 SELL を検出）の採否・修正、R21-01/02 の採否を行ってください。

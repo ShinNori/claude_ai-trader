@@ -67,37 +67,18 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 完了したら build-codex/README.md の末尾に「今回やったこと・テスト件数と結果・Claude に伝えたい点」を追記する。
 ```
 
-## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-28 11:32 第21回）
+## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-28 11:41 第22回）
 
-**発行時刻: 2026-09-28 11:32 JST（Claude / Claude Code、作業フォルダ D:\work\ai-trader。見張り経由で公開）**
+**発行時刻: 2026-09-28 11:41 JST（Claude / Claude Code。保存のみ・未公開。handoff-ready マーカーは付けない）**
 ※ 自動連携は別枠（tools/automation/、auto チャネル）。この B には混ぜない。
-※ 見張り経由の Codex は git とダッシュボード更新を行わない（Claude が代行）。作業ツリーは最新 HEAD 以降。
 
 ```
-今回の依頼: 第21回 EXIT 生成 v6 実装の独立確認（バグ 0・反証 23 件全通過）の受領と、R21-03（reserved_shares 照合で既知外の未決 SELL を検出）の採否・修正、R21-01/02 の採否
+今回の依頼: 引き渡し不要（第22回: R21-01〜03 の採用と D4 実装を独立確認、契約と一致。工程 3 の EXIT 生成はここで区切り。次工程は別依頼）
 
-一次資料: build-codex/EXIT_GENERATION_INDEPENDENT_REVIEW.md（Claude 作成、2026-09-28 11:32 JST）。対象 4 ファイルの sha256 は同報告に記載。
-判断 1 点は「契約と一致」。固定例の packet_hash は独立再計算で一致。既存 BUY 生成の試験 18 件は不変（再実測 1 点）。
-新規: build-codex/tests/test_exit_generation_claude_contract.py（23 件、Claude 環境で 23 passed / 0.33 秒）。
-
-1. R21-03（中・契約の穴）の採否と修正: 既知集合の外にある CREATED/APPROVED の SELL 通知は unconfirmed に載らず検出されない（生成側は
-   NO_SELLABLE_SHARES で止まるため二重売却は起きない）。推奨: 銘柄ごとに Σ notice(pid).reserved_shares（pid ∈ candidate_ids）== view.reserved_shares[code]
-   （BUY は Σ notice.reserve == view.reserved_positions[code]）を前提条件 D4 として追加し、不一致は LEDGER_INCONSISTENT。契約 v6 に D4 を追記し、
-   exit_holdings.py に実装、反証 46（既知外 CREATED SELL → LEDGER_INCONSISTENT）を追加。ops は変更しない。
-2. R21-01（低）: adjustments の kind が SPLIT 以外なら無視（または ratio 欠落を LEDGER_INCONSISTENT）。R21-02（低）: journal 不在・表なしを
-   JOURNAL_UNREADABLE で返すか契約に例外と明記。採否と理由を記載。
-3. 修正した場合は関連試験（EXIT 4 本＋packet/gate/ledger）を Windows 実測。passed/skipped/failed/秒/環境を記録。
-4. README 末尾に短く記録し、Claude 向け次回 B を必須 3 項目様式で保存・公開する。修正した場合、Claude に求めるのは D4 の重要差分 1 点。
-   修正しない場合は「引き渡し不要」。工程 3 の EXIT 生成はこれで区切りとし、次工程（runner 接続・保存）は別依頼。
-
-編集範囲は build-codex/aitrader/exit_holdings.py（R21 修正時のみ）、build-codex/tests/（自分の新規・既存 EXIT 試験）、契約文書、README、
-Claude_Opusキャッチボール.md。ops/・common/・runner.py・packet.py の既存部分・既存試験の期待値・Claude の新規試験・自分宛て MD は変更しない。
-既存試験の削除・skip・xfail・条件緩和は禁止。実API・実売買審査・LINE・証券接続・発注・使用率確認は行わない。
-
-完了条件: 1〜2 の採否記載、（修正時）3、4 の保存・公開。
+確認結果: build-codex/EXIT_GENERATION_INDEPENDENT_REVIEW.md の追補（第22回）。D4 の予約照合（SELL reserved_shares / BUY reserve の銘柄別合算と view の両 map のキー和集合・ゼロ補完）は契約と一致。
+Claude の反証 1 件は修正前の挙動を固定していたため D4 採用後の期待値へ更新（当方ファイルのみ）。当方 23 件＋Codex R21 試験 15 件で 38 passed。
+git: Codex の実装・試験・文書と Claude の更新を Claude がコミット・push。次工程（runner 接続・保存契約、または工程 5 復旧）は共通指示.md のキューで別途起こす。
 ```
-
-<!-- handoff-ready: 5ebf530be2d0d34a7ef01d561f74ca72d591d48a4c4d4a7d342ad86c396298cb -->
 
 ---
 
@@ -153,5 +134,6 @@ Claude_Opusキャッチボール.md。ops/・common/・runner.py・packet.py の
 | 2026-09-28 09:02 | （Claude）工程3: EXIT 契約の改訂 v5（未完了 run は INTENT 行のみ、外部注文はスナップショット照合）を追記し再判定を依頼 | v4 再判定の残り 1 点に回答（公開） |
 | 2026-09-28 09:06 | （Claude）工程3: EXIT 契約の改訂 v6（snapshot/adjustments は明示入力、journal は candidates のみ）を追記し再判定を依頼 | v5 再判定の残り 1 点に回答（公開）。受領 20/20 |
 | 2026-09-28 11:32 | （Claude）第21回: EXIT 生成 v6 実装の独立確認（前提条件・照合式・分割換算・取得日・配分・消費順・数量・指値） | EXIT_GENERATION_INDEPENDENT_REVIEW.md。実装バグ 0。新規反証 23 件 23 passed。R21-03（中）reserved_shares 照合の未使用、R21-01/02（低）。Codex へ採否を依頼（公開） |
+| 2026-09-28 11:41 | （Claude）第22回: R21-01〜03 採用と D4 実装の独立確認（一致）。反証の期待値 1 件を D4 に合わせて更新、38 passed | 引き渡し不要（保存のみ・未公開）。工程 3 区切り |
 
 ※ Cowork（このセッション）からの `tools/run_codex_build.*` 自動起動は、Anthropic 側のネットワーク方針で OpenAI に到達できず失敗する（2026-09-08 確認）。自動起動は則光さんの PC 上の Claude Code から行う。往復の自動化は `tools/pingpong.ps1`（`tools/PINGPONG.md` 参照、2026-09-09 追加）。

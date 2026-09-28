@@ -109,3 +109,15 @@ v5前提条件は採用可能、journalにsnapshot原本がないため指定実
 | 正確な開始未取得（最初の時計確認09:09:32、依頼発行09:06） | 2026-09-28 09:21 JST | v6採用、EXIT導出/生成API・反証1〜45・固定200株hashを実装。初回関連409 passed/44.27秒、補強後最終EXIT関連41 passed/3.57秒、両方skip/failed 0。全体未実施 | Claude：EXIT生成の重要差分の独立確認1点 |
 
 Sol 1体に実装・局所試験を委譲し、親が採否・重要差分・統合試験・記録を担当。詳しい対象版・コマンドはEXIT_GENERATION_CONTRACT_DRAFT.md末尾。実接続なし、git/ダッシュボード/使用率確認なし、QUESTIONSと自分宛てMD無変更。成果・履歴保存後に相手宛てBを最終更新し、devへ公開する。依頼hash: f933da63379c141869f7e70f32de33b436e3a7c79616d772245da67e931eb79f。
+
+
+### 2026-09-28 第21回 EXIT R21 / Codex
+
+| 開始(JST) | 終了(JST) | 結果 | 次担当 |
+|---|---|---|---|
+| 正確な開始未取得（最初の時計確認11:35:07、依頼発行11:32） | 2026-09-28T11:38:31+09:00 | 独立確認を受領、R21-01/02/03採用・修正。Windows関連258 passed / 0 skipped / 1 failed / 6.51秒。失敗は変更禁止のClaude旧R21-03期待値。新規15件通過 | Claude: D4重要差分1点と旧期待値整合 |
+
+依頼hash: 5ebf530be2d0d34a7ef01d561f74ca72d591d48a4c4d4a7d342ad86c396298cb。工程3実装は区切り、runner接続・保存は別依頼。成果・履歴保存後に相手宛てB更新とdev公開を行う。詳細は契約末尾。
+
+
+運用逸脱の開示: 子Solが明示されたgit禁止に反し、`git diff -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git status --short -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git diff --check -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`を各1回実行した。差分/状態確認目的で、add/commit/checkout/reset等の変更操作は実施していない。禁止遵守とは報告しない。判明後は追加操作を停止させた。ダッシュボードと使用率確認は未実施。

@@ -5,7 +5,7 @@ import sqlite3
 from contextlib import closing
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import Decimal, DecimalException
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +37,8 @@ def _dt(value, label):
 
 def _scaled_decimal(qty, since, adjustments, code):
     value = Decimal(qty)
-    for adjustment in sorted(adjustments, key=lambda a: _dt(a['at'], 'adjustment.at')):
+    split_adjustments = [a for a in adjustments if a.get('kind', 'SPLIT') == 'SPLIT']
+    for adjustment in sorted(split_adjustments, key=lambda a: _dt(a['at'], 'adjustment.at')):
         if adjustment.get('code') == code and _dt(adjustment['at'], 'adjustment.at') > since:
             ratio = Decimal(str(adjustment.get('ratio')))
             if not ratio.is_finite() or ratio <= 0:
@@ -85,7 +86,10 @@ def derive_holdings(ledger, orchestration_path, snapshot, adjustments, as_of,
     if not isinstance(as_of, (date, datetime)):
         raise ValueError('as_of must be date or datetime')
     observed_at = as_of if isinstance(as_of, datetime) else datetime.combine(as_of, datetime.max.time(), JST)
-    candidates = _journal_candidates(orchestration_path)
+    try:
+        candidates = _journal_candidates(orchestration_path)
+    except (OSError, sqlite3.Error):
+        return HoldingDerivationResult([], ['JOURNAL_UNREADABLE'], None)
     snapshot_orders = _snapshot_orders(snapshot)
     candidate_ids = set(candidates) | {o['proposal_id'] for o in snapshot_orders}
     if any(state == 'INTENT' for state in candidates.values()):
@@ -115,9 +119,27 @@ def derive_holdings(ledger, orchestration_path, snapshot, adjustments, as_of,
         external_ids = {pid for pid, p in proposals.items() if p.get('exec_condition') == 'EXTERNAL'}
         if external_ids != snapshot_ids or any(proposals[pid].get('exec_condition') != 'EXTERNAL' for pid in snapshot_ids):
             return HoldingDerivationResult([], ['LEDGER_INCONSISTENT'], seq_after, tuple(sorted(candidate_ids)))
+        known_sell_reservations, known_buy_reservations = {}, {}
+        for pid, proposal in proposals.items():
+            code = str(proposal.get('code'))
+            notice = notices[pid]
+            if proposal.get('side') == 'SELL':
+                known_sell_reservations[code] = (known_sell_reservations.get(code, 0)
+                                                  + notice.get('reserved_shares', 0))
+            elif proposal.get('side') == 'BUY':
+                known_buy_reservations[code] = (known_buy_reservations.get(code, 0)
+                                                 + notice.get('reserve', 0))
+        sell_codes = set(known_sell_reservations) | set(view.reserved_shares)
+        buy_codes = set(known_buy_reservations) | set(view.reserved_positions)
+        if (any(known_sell_reservations.get(code, 0) != view.reserved_shares.get(code, 0)
+                for code in sell_codes)
+                or any(known_buy_reservations.get(code, 0) != view.reserved_positions.get(code, 0)
+                       for code in buy_codes)):
+            return HoldingDerivationResult([], ['LEDGER_INCONSISTENT'], seq_after,
+                                           tuple(sorted(candidate_ids)))
         try:
             holdings, excluded = _derive(view, proposals, notices, unconfirmed, snapshot, adjustments, seq_after)
-        except ValueError:
+        except (ValueError, DecimalException):
             return HoldingDerivationResult([], ['LEDGER_INCONSISTENT'], seq_after, tuple(sorted(candidate_ids)))
         return HoldingDerivationResult(holdings, [], seq_after, tuple(sorted(candidate_ids)), tuple(excluded))
     return HoldingDerivationResult([], ['SEQ_CHANGED'], None, tuple(sorted(candidate_ids)))

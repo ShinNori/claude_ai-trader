@@ -469,3 +469,67 @@ Windows 11 10.0.26200、Python 3.12.14、PowerShell、cwd=D:/work/ai-trader。�
 | tests/fixtures/exit_v6_expected.json | f06cf71f6c8f2b8fe8ed9b5dbea349a214995fc6e8af7171ce1773ee1cc14f8b |
 
 開始時に保存した既存試験/ops/common/runner/examples/自分宛てMDの231ファイルはhash変更なし。packet.pyの既存行削除・置換なし。QUESTIONSは変更せず、git・ダッシュボード・使用率確認は依頼どおり未実施。Sol 1体が実装・局所試験、親が採否・重要差分確認・統合検証・記録を担当した。Claude独立確認済みではない。次担当ClaudeにはEXIT生成の重要差分の独立確認1点を依頼する。
+
+
+## 第21回受領・R21採否（2026-09-28、Codex）
+
+依頼hash: 5ebf530be2d0d34a7ef01d561f74ca72d591d48a4c4d4a7d342ad86c396298cb。
+Claudeの独立確認「実装バグ0・反証23件全通過（0.33秒）」をレビュー時点のv6に対する結果として受領した。報告掲載の製品・固定例・試験5ファイルのSHA-256が開始時の実ファイルと一致した。今回の修正後まで独立確認済みという意味ではない。
+
+### R21-03: 採用、D4を追加
+
+安定したseqの同じ観測内で取得した公開notice/proposalとviewに対し、各銘柄codeで次を検査する。candidate_idsは従来どおりjournal candidatesとsnapshot外部注文IDの和集合。
+
+- SELL: Σ notice(pid).reserved_shares（既知集合内のSELL） == view.reserved_shares[code]
+- BUY: Σ notice(pid).reserve（既知集合内のBUY） == view.reserved_positions[code]
+
+比較対象は各集計とviewのキーの和集合、未出現の銘柄は0。通知を作らないREJECTED候補は集計に含めない。状態名で集計を限定せず、公開noticeの現在予約値を使う。確定・取消等で予約が0なら0として扱う。seqが変わった場合は既存の再読を優先し、不安定な観測から不整合を決めない。既存の欠落・unconfirmed・EXTERNAL照合後、ロット導出前にD4を置き、不一致はholdings=[] / LEDGER_INCONSISTENTとする。
+
+これにより既知集合外のCREATED/APPROVEDの予約を検出できる。確定済みで予約0の相殺欠落まで検出する保証ではなく、T1/T2は維持する。ops変更・全通知列挙APIの追加は不要。
+
+反証46: journalの既知集合外にCREATED SELL（予約あり）が存在 → LEDGER_INCONSISTENT、holdings空。既知集合へ登録した正常未決SELLは導出を通り、生成は既存OPEN_SELL_EXISTSで停止する。
+
+### R21-01: 採用
+
+adjustmentsに明示kindがある場合、SPLIT以外は換算対象から除外する。kind省略は従来のSPLIT入力互換性を維持する。SPLITのratio欠落・不正値はLEDGER_INCONSISTENTとして導出を停止する。DIVIDEND等の非分割記録を株数換算へ流用しないための限定修正であり、これらの調整の適用契約を新設したものではない。
+
+### R21-02: 採用
+
+journalが不在・読取不能・candidates表不在などSQLite読取に失敗する場合、JOURNAL_UNREADABLE（holdings空、observed_seq=None）を返す。読取専用のまま、新しいDBや表は作らず、失敗時にLedger読取へ進まない。入力型誤り全般を正常扱いする変更ではない。snapshot未指定のSNAPSHOT_MISSINGは引き続き先行する。
+
+### 既存Claude反証との契約差
+
+test_derive_output_feeds_builder_and_generated_sell_reserves_sharesは旧D2の穴を記録するためunknown.reason_codes == []を要求している。D4採用後はLEDGER_INCONSISTENTが正しいためこのassertと衝突する。Codexは明示された編集制限に従い、当該試験を変更・削除・skip・xfailしない。新契約の反証46は別のCodex試験へ追加する。この差を実測結果に残し、D4の重要差分1点としてClaudeへ引き継ぐ。
+
+
+### 第21回修正後Windows実測（2026-09-28T11:38:31+09:00）
+
+対象は最終ローカル作業ツリー。Windows 11 10.0.26200、CPython 3.12.14、PowerShell、cwd=D:/work/ai-trader。PYTHONDONTWRITEBYTECODE=1、PYTHONIOENCODING=utf-8、PYTHONPATH=ops;build-codex、DBはTEMP（Dropbox外）。
+コマンド: `python -m pytest <下記13ファイル> -q -ra -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/r21_integration_1790563042900436700`。
+
+- build-codex/tests/test_exit_generation_claude_contract.py
+- build-codex/tests/test_exit_generation_v6.py
+- build-codex/tests/test_exit_pipeline.py
+- build-codex/tests/test_exit_r21.py
+- build-codex/tests/test_exit_v4_external_contract.py
+- build-codex/tests/test_packet_local.py
+- build-codex/tests/test_packet_mapping_safety.py
+- build-codex/tests/test_packet_reference_sequences.py
+- build-codex/tests/test_packet_snapshot.py
+- common/tests/phase2/test_gate.py
+- common/tests/phase2/test_ledger.py
+- common/tests/phase2/test_packet.py
+- ops/tests/test_ledger_transaction_failures.py
+
+結果: **258 passed / 0 skipped / 1 failed / 6.51秒**（プロセス実時間6.922秒、終了コード1）。skip理由なし。新規test_exit_r21.pyの15件は全通過。全体試験は未実施。唯一の失敗はtest_exit_generation_claude_contract.py:244のtest_derive_output_feeds_builder_and_generated_sell_reserves_sharesで、旧期待reason_codes=[]に対しD4のLEDGER_INCONSISTENTを返す契約差。失敗を成功へ算入しない。当該関数の後続assertはこの実行では到達していない。既知SELLの正常導出と部分約定・取消は新規試験で別途検証した。
+
+変更製品SHA-256: exit_holdings.py=5c89802ce819a54d801115af6657e165ec0f027485038697b613994dc721096e。
+新規試験SHA-256: test_exit_r21.py=d764f9bd9488bd40502a930d1390c921026f36200bbde0e31dd8c46cc25b70d3。
+開始時に保護対象として保存したops/common/既存tests/runner/packet/自分宛てMDの232ファイルは全てhash一致。Claudeの独立報告・試験・固定例は変更していない。上位設計書は指定相対パスに存在せず未読。共通仕様・公開Ledger API・v6契約を根拠とした局所修正。QUESTIONSは変更しない。
+
+工程3のEXIT生成の今回実装は区切り。残件はClaudeによるD4の重要差分1点の確認（既存反証の旧期待値との整合を含む）。runner接続・保存は別依頼であり今回着手しない。修正後のClaude独立確認は未実施。
+
+
+運用逸脱の開示: 子Solが明示されたgit禁止に反し、`git diff -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git status --short -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git diff --check -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`を各1回実行した。差分/状態確認目的で、add/commit/checkout/reset等の変更操作は実施していない。禁止遵守とは報告しない。判明後は追加操作を停止させた。ダッシュボードと使用率確認は未実施。
+
+子Solの局所実測（親の最終一括とは別、合算しない）: 同じWindows/Python/環境変数で `python -m pytest <対象> -q -ra -p no:cacheprovider --basetemp <TEMP内>`。新規test_exit_r21.pyは初回15 passed/0.40秒、最終15 passed/0.48秒。v6＋Claude＋新規は70 passed/0 skipped/1 failed/1.88秒（同じ旧期待値）。v6＋新規は48 passed/0 skipped/0 failed/1.59秒。対象版の統合結果は上記親の258 passed/1 failedを採用する。

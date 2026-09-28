@@ -238,13 +238,10 @@ def test_derive_output_feeds_builder_and_generated_sell_reserves_shares(tmp_path
     t = AT + timedelta(days=29)
     ledger.create_notice(p, at=t)
     assert ledger.view().reserved_shares.get("7203") == 200
-    # CREATED 状態の SELL が既知集合の外（journal 未登録）にある場合: unconfirmed は SENT/EXPIRED/EXTERNAL しか列挙しないため
-    # 導出は通る（R21-03 の契約の穴）。ただし売却予約株数が保有と同数なので生成側は NO_SELLABLE_SHARES で候補を出さない（安全側の不変条件）。
+    # CREATED 状態の SELL が既知集合の外（journal 未登録）にある場合: R21-03 → D4（予約株数の照合）採用後は
+    # Σ notice.reserved_shares（既知 0）≠ view.reserved_shares（200）で LEDGER_INCONSISTENT。導出は空を返し、生成へ進まない。
     unknown = derive_holdings(ledger, j, snapshot(), [], AS_OF)
-    assert unknown.reason_codes == [] and all(not h["open_sell_notice"] for h in unknown.holdings)
-    assert unknown.holdings[0]["reserved_shares"] == 200
-    rebuilt = build(unknown.holdings)
-    assert rebuilt.proposals == [] and {e["reason_code"] for e in rebuilt.excluded} == {"NO_SELLABLE_SHARES"}
+    assert unknown.reason_codes == ["LEDGER_INCONSISTENT"] and unknown.holdings == []
     # journal に登録されていれば OPEN_SELL_EXISTS で除外される
     j2 = tmp_path / "j2.sqlite"; journal(j2, [("buy-a", "BUY", "APPROVED"), ("buy-b", "BUY", "APPROVED"), (p.proposal_id, "SELL", "APPROVED")])
     again = derive_holdings(ledger, j2, snapshot(), [], AS_OF)
