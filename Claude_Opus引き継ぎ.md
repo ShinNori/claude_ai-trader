@@ -5,7 +5,7 @@
 Codex 向けの依頼・契約・レビュー本文は従来どおり build-codex/ 配下にある。
 
 最終更新: 2026-09-20 09:11 JST（第14回 put/verify 独立確認保存後。TEAM_WORKFLOW.md の新方針に従いサブエージェント 0 体・Claude Code で実施）
-Claude 側のキャッチボール受領回数: **18 / 20**（次の移行目安は第20回を保存し Codex へ一文を渡した直後）
+Claude 側のキャッチボール受領回数: **19 / 20**（次の移行目安は第20回を保存し Codex へ一文を渡した直後）
 
 新しいチャットでの開き方: この文書を `device_stage_files` で読み、
 `build-codex/Claude_Opusキャッチボール.md` の A/B に従って次のレビューを行う。

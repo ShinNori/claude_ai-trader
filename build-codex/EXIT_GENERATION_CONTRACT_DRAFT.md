@@ -360,3 +360,42 @@ Windows再現: `PYTHONDONTWRITEBYTECODE=1; PYTHONPATH=ops;build-codex`（環境�
 製品・既存試験・ops/common/runner/examples・自分宛てMD・QUESTIONS無変更。上位設計書は指定相対パスに存在せず未読。本判定は現行公開APIとv4自身の前提条件・反証41との直接矛盾に限定。独立実装作業がないため子エージェントなし。git・ダッシュボード・使用率確認は依頼指定により未実施。
 依頼hash: 211ba0b3f6e00c4738f546a357e39bfd765e3441191cf27728ceaad9671c276c。
 記録時刻: 2026-09-28T09:00:24.552150+09:00
+
+
+---
+
+## 改訂 v5（2026-09-28、v4 再判定の残り 1 点「初期外部注文への outbox 必須検査」への回答。D15-08 改 2 の前提条件表だけを差し替える）
+
+Codex の指摘どおり、`candidate_ids` の全 pid に「通知あり・outbox なし → RUN_INCOMPLETE」を当てると、初期スナップショットの外部注文（`EXTERNAL` 通知。runner の outbox を持たない）が正常でも全体拒否になる。未完了 run の判定を **runner 由来の記録だけ**に限定し、外部注文は**スナップショット入力との照合**で扱う。上位集合 `candidate_ids`、T1/T2・D1〜D3、その他の規則は v4 のまま。
+
+### 前提条件（改）
+
+| 条件 | 判定 | 理由コード |
+|---|---|---|
+| 未完了 run が無い | `candidates` 表に `state='INTENT'` の行が無い。runner は outbox INSERT と `state='APPROVED'` 更新を同一トランザクションで行う（`runner.py` 468〜474）ため、「通知あり・outbox なし」は必ず `state='INTENT'` として現れる。outbox 自体は検査しない | `RUN_INCOMPLETE` |
+| 外部注文がスナップショットと一致 | `snapshot.open_orders` の各 ID について `Ledger.proposal(pid)` が存在し `exec_condition == 'EXTERNAL'`。逆に、`candidate_ids ∪ unconfirmed(as_of)` に現れる `exec_condition == 'EXTERNAL'` の通知は、すべて `snapshot.open_orders` の ID に含まれる。**ID の接頭辞（`external-`）では判定しない** | `LEDGER_INCONSISTENT` |
+| 未決通知が既知 | `Ledger.unconfirmed(as_of)` ⊆ `candidate_ids`（v4 のまま） | `LEDGER_INCONSISTENT` |
+| 残高照合・観測の安定 | v3 のまま | `LEDGER_INCONSISTENT` / `SEQ_CHANGED` |
+
+外部注文の扱い（銘柄単位、前提条件を通過した後）:
+- 外部 SELL が未決（`unconfirmed` に含まれる）→ その銘柄は `OPEN_SELL_EXISTS`。他銘柄の生成は続ける。
+- 外部注文が確定済み（約定・取消・見送り）→ 生成に影響しない（消費は D15-06 の「紐づかない売却」規則、数量は D15-09）。outbox が無いことを理由に拒否しない。
+- 外部 BUY が未決 → 売却可能株数に加えない（v1 の規則どおり）。
+
+### 固定例（v5 追加）
+
+- **正常な初期外部 SELL**: `snapshot.open_orders=[{proposal_id:null→'external-1', code:'7203', side:'SELL', qty:100}]`、台帳では `EXTERNAL` 通知、`candidates` に INTENT 行なし。前提条件はすべて通過。7203 は `OPEN_SELL_EXISTS` で除外、他銘柄（6857 など）の生成は続く。`RUN_INCOMPLETE` にはならない。
+- **確定済みの外部 SELL**: 上の外部注文が 100 株約定済み → `unconfirmed` に無く、7203 のロット残は「対象外残高 → 最古ロット」の順で 100 株消費済みとして導出。生成は通常どおり。
+- **スナップショットに無い EXTERNAL**: `unconfirmed` に `exec_condition='EXTERNAL'` の通知があるが `snapshot.open_orders` に無い → `LEDGER_INCONSISTENT`（初期入力の改変か runner 外書込）。
+
+### 反証表への追加（42〜44）
+
+| # | 条件 | 期待 |
+|---|---|---|
+| 42 | 正常な初期外部 SELL（未決）＋他銘柄の満了ロット | 7203 は `OPEN_SELL_EXISTS`、他銘柄は候補生成。`RUN_INCOMPLETE` なし |
+| 43 | 初期外部 SELL が全約定済み | 前提条件通過、7203 のロット残から 100 株消費、候補は残数量で生成 |
+| 44 | `snapshot.open_orders` に無い EXTERNAL 通知 | `LEDGER_INCONSISTENT` |
+
+反証 38（v4）は「INTENT 行なし・通知あり・outbox なし」を模擬していたが、現行 runner ではこの状態は `state='INTENT'` としてしか現れないため、**38 は「`state='INTENT'` の行があり通知も存在する」に読み替える**（37 と同じ経路。期待は `RUN_INCOMPLETE`）。
+
+更新時刻: 2026-09-28 09:02 JST。保存のみ。Codex の再判定を依頼。
