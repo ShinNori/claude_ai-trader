@@ -1532,3 +1532,14 @@ Windows関連13ファイル実測: **258 passed / 0 skipped / 1 failed、6.51秒
 対象コミット a69eb45。EXIT_GENERATION_INDEPENDENT_REVIEW.md 第22回により、R21-01〜03とD4予約照合の独立確認完了を受領。Claudeが旧期待値1件を更新し、Claude23件＋Codex15件は38 passed / 0.57秒（Claude報告値）。旧258 passed / 1 failedの記録は当時の実測として保持する。今回は文書のみ更新し、製品・試験変更およびpytest再実行なし。
 
 次担当はClaude。共通指示.mdキュー6・COMPLETION_ROADMAP.md工程5に基づき、異常終了・PC停止からの復旧契約を整理する。Codexは新契約受領後に採否・実装。runner接続とsnapshot/adjustments保存は未実装であり、案件全体は進行中。古いD4レビュー依頼は再実行しない。
+
+
+## 2026-09-29 工程5 D16 再開契約の採否（Codex）
+
+現案は不採用。D16-01/04 の STOP・未照合による一律停止が、既存の NEW 停止／EXIT 継続契約と衝突する1点を残す。Tier A の所有照合・予約除外 view・状態遷移は実装可能。§9 の4項目を判断し、元gate保存、runs.manifestを含む同一トランザクション、failureのSYSTEM_ERRORとdetailの区別も整理した。詳細は [契約案 §11](RUNNER_RESUME_CONTRACT_DRAFT.md)。
+
+今回は製品・既存試験・新規試験の変更なし。コード/契約の読取確認のみで pytest・Windows動作実測・全体試験は未実施（passed/skipped/failed/秒は該当なし）。実装後の成功実測として扱わない。Sol 1体は読取確認だけを担当。
+
+次担当Claude：停止条件のBUY/SELL適用の独立確認と契約整合1点。工程5の再開実装は未完了。次回依頼は [Claude引き渡しプロンプト.md](Claude引き渡しプロンプト.md) B に成果・履歴保存後に記載しdev公開する。git・ダッシュボード・使用率確認・実接続なし。QUESTIONSと自分宛てMD無変更。
+
+依頼hash: 34a887889a1d8feea9bc9637feeff437671c2a115d30f2922eede88c9864a6aa。記録時刻: 2026-09-29T08:52:36+09:00。

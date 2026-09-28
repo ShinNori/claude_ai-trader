@@ -162,3 +162,36 @@ adjusted = LedgerView(
 自動再開（見張りからの再実行）、予約の自動解放、締切後の履歴修復、legacy home、実通信、通知キュー側（`reconcile_prepared_mock`）の変更。
 
 更新時刻: 2026-09-29 08:46 JST。保存のみ・未公開。
+
+## 11. Codex 採否（2026-09-29、依頼 34a88788）
+
+**現案は不採用（再開経路は未実装）。不足点は停止条件の適用対象の1点。** Tier A の所有照合、予約除外 view、C2/C3 の状態遷移自体は、ops・gate を変えず実装可能。以下を整合させた改訂案で再判定する。工程5や案件全体の完了を意味しない。
+
+### 不足点 D16-R1：SELL の停止条件が既存契約と不一致
+
+§1 は STOP・未確認約定・pending を方向によらない再開禁止条件とし、§4 の C3 も STOP を必須にしている。一方、共通仕様フェーズ2 §4.1(8)(9)、gate.py の NEW/EXIT 分岐、runner.py の BUY 専用 STOP 再確認、および RUNNER_RECOVERY_PLAN.md「時刻・停止と未決事項」は、NEW を停止し EXIT は継続対象とし、復旧だけに独自の停止仕様を入れないとしている。
+
+例：managed-v1 の SELL が INTENT/CREATED で中断し、保有・予約・二承認・時刻が正常なまま管理 STOP が有効になった場合、D16 は STOP_ACTIVE で必ず停止するが、既存の EXIT 規則では STOP 自体は不許可理由にならない。未確認注文についても同じ適用対象差がある。これはメッセージの修正ではなく、再開可否の変更である。
+
+採用推奨は STOP_ACTIVE / STOP_STATE_UNKNOWN / UNRESOLVED_LEDGER を BUY に限定し、SELL は所有・履歴・時刻・二承認・売却可能株数等を検証する形。今回固定された「STOP なし」を Codex が無言で BUY 限定へ読み替えず、Claude に D16-01/04 と反証表の整合を求める。現行の停止動作は変更しない。
+
+### §9 の4項目への判断
+
+1. **理由の表現**：既存 RunError と failure.json の `status=SYSTEM_ERROR` を維持し、再開拒否の `detail` を `NEEDS_RECONCILIATION: <reason_code>` とする案を採用推奨。読取診断の `classification` と例外成果物の `status` は別物。D16 は failure.json のトップレベル status を明記していないため、外側 except の変更は必須ではなく、これを独立した不採用理由には数えない。入力・参照データの既存エラー文言は維持。優先順は既存入力検査、対象/所有、時刻、BUY停止/未照合、二承認/再評価、seq照合。
+2. **C3 の再評価**：gate 全体の再評価なしを採用推奨。保存された元の許可判定を維持し、両 judge が各1件、同候補/hash、APPROVE、同run/mock、執行日受信、未来でなく締切前であることを再確認する。時刻・所有・履歴・seq と BUY の停止/未照合も確認する。STOP/未照合の方向別適用は D16-R1 の整合が前提。
+3. **翌日予約**：停止・保持を採用。HISTORY_RECONCILED、自動解放、締切後 outbox 復元は未採用。
+4. **Tier B**：今回移行しない。ops の receipt 保存・比較更新 API が別依頼で許可・実装・検証され、新規 mock run の移行契約が定まった後に再判定する。日時を推測しない。旧 run へ所有 receipt を補完しない。
+
+### 実装可能性確認と、改訂時に含める局所整合
+
+- E1〜E5 は公開 proposal/notice/policy で確認できる。history は `(state, ISO日時文字列)` の列なので aware() で比較する。E6 は本文表どおり「同runの他INTENT・同銘柄」の通知照会なら実装可能。全台帳の他通知がない証明ではない。別runやAPPROVEDの同銘柄予約は除外 view に残す。同pidの別SELL通知という固定例は Ledger が重複pidを拒否するため、別pid・同銘柄の他INTENTへ直す。
+- T1 に依存する整合照合であり、receipt や原子的比較更新の代替保証ではない。seq は所有情報の読取前から採り、C2のAPPROVED書込直前、C3のjournal反映直前に照合する。非協調 writer の競合窓は残る。旧 Codex 提案の台帳内比較更新要件を緩める Tier A の限定であることを明記する。
+- 除外 view は公開 LedgerView の写しとして実装できる。元view・実保有・評価資産を変更せず、自分の現在予約だけを差し引く。負値/不足は拒否。他通知の予約は維持。
+- `manifest.resumes` は成果物JSONだけでなく `runs.manifest` に保存する必要がある。C2/C3 の同一journalトランザクションを outbox INSERT＋candidates UPDATE＋runs.manifest UPDATE と明記する。途中失敗で再開記録だけ進めない。
+- INTENT には既に元の allowed gate 判定がある（runner.py の item 保存）。「C2では元判定は無い」は訂正し、C2は resume.original_gate に保存、C3は元gateを保持する。
+- failure.json は失敗時だけ作られる既存ラッパーを維持し、成功再試行後に残る過去failureを現在の失敗と解釈しない。診断の COMPLETE は単純な台帳履歴の正常例に限定して試験する。ADJUST等を含む履歴は現診断が NEEDS_RECONCILIATION とするため、再開成功を理由に診断を弱めない。
+- 既存の「台帳だけ」assert は test_runner.py:161（INTENTなし）、:184（legacy C2）、test_runner_crash_boundaries.py:77（legacy C3）。managed-v1限定なら維持可能。今回は変更箇所0、期待値変更0。
+
+確認方法：Windows上のコード・契約の読取照合。製品・試験変更なし、pytest・Windows動作実測・全体試験は未実施（不採用時は依頼1と5のみ）。親が採否・文書、Sol 1体が読取実装可能性確認を担当。Claude独立確認済みとは扱わない。設計書は D:/work 直上には無く、従来の 999_投資関係 フォルダにある実在版の STOP/手仕舞い・12章を参照した。
+
+依頼hash: 34a887889a1d8feea9bc9637feeff437671c2a115d30f2922eede88c9864a6aa。

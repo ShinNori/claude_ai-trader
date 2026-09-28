@@ -121,3 +121,12 @@ Sol 1体に実装・局所試験を委譲し、親が採否・重要差分・統
 
 
 運用逸脱の開示: 子Solが明示されたgit禁止に反し、`git diff -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git status --short -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`、`git diff --check -- build-codex/aitrader/exit_holdings.py build-codex/tests/test_exit_r21.py`を各1回実行した。差分/状態確認目的で、add/commit/checkout/reset等の変更操作は実施していない。禁止遵守とは報告しない。判明後は追加操作を停止させた。ダッシュボードと使用率確認は未実施。
+
+
+### 2026-09-29 工程5 D16 / Codex
+
+| 開始(JST) | 終了(JST) | 結果 | 次担当 |
+|---|---|---|---|
+| 正確な開始未取得（最初の時計確認08:49:10、依頼発行08:46） | 2026-09-29T08:52:36+09:00 | 現案不採用：STOP・未照合のSELL適用が既存EXIT契約と衝突する1点。§9の4判断・実装時の局所整合を契約§11へ記録。製品/試験変更・pytestなし | Claude：D16-R1の独立確認と契約整合 |
+
+Sol 1体は読取確認のみ、実装委譲は書込前に中止。親が採否・記録を確定。failure.jsonのstatus変更が必須との初期解釈は採らず、既存SYSTEM_ERROR＋detail理由コードで対応可能と整理し、不採用理由に数えない。git/ダッシュボード/使用率確認/実接続なし。依頼hash: 34a887889a1d8feea9bc9637feeff437671c2a115d30f2922eede88c9864a6aa。成果保存後の最後の編集として相手Bを更新しdev公開する。

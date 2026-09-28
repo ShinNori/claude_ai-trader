@@ -63,20 +63,29 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: 引き渡し不要（第22回D4独立確認を受領、EXIT生成工程は完了。次は共通キュー6の復旧契約整理）
+今回の依頼: 工程5 D16-R1（再開時のSTOP・未照合条件のBUY/SELL適用）の独立確認と契約整合
 
-更新: 2026-09-29 08:45 JST。作業先 D:/work/ai-trader。対象 a69eb45。TEAM_WORKFLOW.md優先。
+更新: 2026-09-29T08:53:00+09:00。作業先 D:/work/ai-trader。依頼hash 34a887889a1d8feea9bc9637feeff437671c2a115d30f2922eede88c9864a6aa への採否回答。対象は現在作業ツリー、git操作によるHEAD確認なし。Aの旧ops修正依頼は実行しない。TEAM_WORKFLOW.md優先。
 
 【変更ファイル一覧】
-build-codex/README.md / 207452 bytes / 2026-09-29T08:45:09+09:00
-build-codex/Codex継続プロンプト.md / 54014 bytes / 2026-09-29T08:45:09+09:00
-本引き渡しBも更新。製品・試験変更なし。
+build-codex/RUNNER_RESUME_CONTRACT_DRAFT.md / 23614 bytes / SHA256 8cd1d76f280d8d8dde8fbd6c65634ec93cb8bc6cf1025930ba5ba46113c48ed7
+build-codex/README.md / 210277 bytes / SHA256 4944932bcc6bd21205939f6f4123543fade9ac4ee1939fa1308e3d73e4428318
+build-codex/Claude_Opusキャッチボール.md / 12414 bytes / SHA256 d0c21643448d2e87ab2997bb200cee22d51ce9cdde30083013841ed720959c82
+本引き渡しBと下記履歴も更新。製品・既存試験・新規試験・自分宛てMD・QUESTIONSは変更なし。
 
 【Codex 実測】
-今回は文書整理のみで試験未実行。第22回Claude報告の38 passed / 0.57秒を受領（新規実測ではない）。参照: EXIT_GENERATION_INDEPENDENT_REVIEW.md第22回。旧258 passed / 1 failedは過去の記録。
+Windows上のコード・契約読取確認のみ。D16現案は不採用のため依頼1と5を実施し、pytest・Windows動作実測・全体試験は未実施。passed/skipped/failed/秒は該当なし。工程5の実装成功や試験通過とは扱わない。runner.py未編集、runner_resume.pyと新規D16試験は未作成。Sol 1体は読取確認のみ。
 
 【今回 Claude に求める判断】
-追加レビューなし。第21回R21-03のD4確認依頼は完了済み。次の「次」は共通指示.mdキュー6・COMPLETION_ROADMAP.md工程5の復旧契約整理を別依頼として進める。契約受領後にCodexが採否・実装。runner接続・保存は未実装で、案件全体の完了ではない。
+独立確認はD16-R1の1点：RUNNER_RESUME_CONTRACT_DRAFT.md §11を読み、§1/§4のSTOP・未確認/pendingによる一律再開停止を、共通仕様フェーズ2 §4.1(8)(9)、gateのNEW/EXIT分岐、RUNNER_RECOVERY_PLAN.mdの「復旧だけに独自の停止仕様を入れない」と整合させる。Codex推奨はBUY限定。SELLも停止する新契約を採る場合は既存契約との相違を明示し、単なる実装詳細として扱わない。
+
+同§11の局所整合（元gate保持、runs.manifestを含むjournalトランザクション、E6の対象集合・固定例、SYSTEM_ERRORラッパーとdetail理由の区別）と§9の4判断を本文へ反映する。failure.jsonのトップレベルstatus変更は必須とは判定しておらず、それを別の阻害点に増やさない。所有照合・除外view・seq比較・状態遷移は実装可能と確認済みで、全件再レビューは不要。
+
+編集範囲：RUNNER_RESUME_CONTRACT_DRAFT.mdの改訂・必要なレビュー文書と履歴、Codex向け次回B。製品・ops/common/gate・既存試験は変更しない。全体試験の繰返し不要。完了条件はD16-R1の結論と整合した契約、Codexへの採否再判定依頼の保存・dev公開。再開実装は次のCodex依頼。実接続・自動再開・予約自動解放へ広げない。
+
+開始JST: 正確な開始未取得（最初の時計確認08:49:10、依頼発行08:46）。成果・履歴保存完了: 2026-09-29T08:53:00+09:00。git・ダッシュボード・使用率確認なし。公開はこのB保存後に実行する。
+
+<!-- handoff-ready: 7f97ce08c34190090bc2c8690b257171299bc2262bade17d271cbf0c8157e11c -->
 
 ## 過去のB（実行対象外）
 
@@ -172,3 +181,5 @@ python=C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/pytho
 
 <!-- historical-ready: a4e930a2243211e6c646cab2ab8fe7fbd879e0e47e348321f9c341ed11a5d10f -->
 
+
+| 未取得（最初の時計確認2026-09-29 08:49:10 JST） | 2026-09-29T08:53:00+09:00 | 工程5 D16契約採否 | 現案不採用、D16-R1の1点。製品変更/試験なし。Claudeへ契約整合依頼 |
