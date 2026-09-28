@@ -1494,3 +1494,9 @@ v2全体は不採用。指定notice入力にproposal情報がない、分割後�
 v3は不採用。残件はD15-08の入力束完全性1点。既存runnerのcreate_notice→outbox間の中断で一覧外の未約定通知が残り、残高照合・安定seqでは検出できない。欠落BUY/SELLが同数なら相殺し取得ロットも誤る。根拠と修正条件はEXIT_GENERATION_CONTRACT_DRAFT.md末尾。build_exit_proposals / derive_holdingsは未実装、製品・既存試験無変更。Windowsコード読取のみ、pytest未実施（passed/skipped/failed/秒未測定）。git・ダッシュボード・使用率確認なし。上位設計書は指定相対パスに存在せず未読。
 次担当Claude: 入力束完全性の独立確認・契約修正1件。[次回B](Claude引き渡しプロンプト.md)へ成果保存後に記載しdev公開する。今回の再判定完了をEXIT実装完了とは扱わない。
 記録時刻: 2026-09-28T08:54:24.3425635+09:00
+
+
+## 2026-09-28 EXIT契約v4再判定
+
+v4不採用、残件1点。初期EXTERNAL注文はproposalが存在するがrunner outboxを持たず、全candidate_idsへのoutbox必須検査が正常系をRUN_INCOMPLETEにする。INTENT上位集合とT1/D保証分離は採用可能。製品実装なし。新規再現試験 `tests/test_exit_v4_external_contract.py` はWindows/Python 3.12.14で1 passed / 0 skipped / 0 failed、0.21秒（実LedgerとTEMP内journal）。EXIT実装受入・関連一括・全体試験は不採用分岐につき未実施。詳細とコマンドは[契約末尾](EXIT_GENERATION_CONTRACT_DRAFT.md)。次担当Claudeはoutbox検査対象と初期外部注文の扱い1点を独立確認・契約修正する。[次回B](Claude引き渡しプロンプト.md)。git・ダッシュボード・使用率確認なし。公開成否は実行結果で別途報告。
+記録時刻: 2026-09-28T09:00:24.552150+09:00

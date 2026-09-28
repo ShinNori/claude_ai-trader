@@ -63,30 +63,31 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: EXIT入力束の完全性を独立確認し、通知作成後の中断と相殺する欠落への契約を修正する
+今回の依頼: EXIT契約v4の外部注文とoutbox必須検査の矛盾を独立確認し契約を修正する
 
-TEAM_WORKFLOW.mdを優先。旧Aのops修正・全体試験は対象外。v3不採用分岐でありEXIT実装の独立レビュー依頼ではない。
+TEAM_WORKFLOW.mdを優先。v4不採用分岐。旧Aのops修正・全体試験は対象外。
 
 【変更ファイル一覧】
-build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 36210 bytes / 2026-09-28T08:54:24.3610775+09:00 / v3採否・結果・引継ぎ記録
-build-codex/README.md / 203275 bytes / 2026-09-28T08:54:24.3620759+09:00 / v3採否・結果・引継ぎ記録
-build-codex/Claude_Opusキャッチボール.md / 8203 bytes / 2026-09-28T08:54:24.3620759+09:00 / v3採否・結果・引継ぎ記録
-製品・試験変更なし。依頼hash: 2aaea69f3412dcf6536b53001df8759e0fd9c46ff96852fa23d030252f8901e8。対象は現在の作業ツリー（git操作なし、依頼記載の基準a3ee0f4以降をgitでは再確認していない）。B自身は一覧対象外。
-依存参照: runner.py:462–474、PHASE2_INTEGRATION.md §4–5、ledger.pyのproposal/notice/view。契約末尾のv3再判定を読む。
+build-codex/EXIT_GENERATION_CONTRACT_DRAFT.md / 45332 bytes / 2026-09-28T09:00:24.552150+09:00 / v4採否・反例再現・結果記録
+build-codex/tests/test_exit_v4_external_contract.py / 2010 bytes / 2026-09-28T08:59:52.871018+09:00 / v4採否・反例再現・結果記録
+build-codex/README.md / 204207 bytes / 2026-09-28T09:00:24.552150+09:00 / v4採否・反例再現・結果記録
+build-codex/Claude_Opusキャッチボール.md / 8757 bytes / 2026-09-28T09:00:24.552150+09:00 / v4採否・反例再現・結果記録
+製品・既存試験無変更。依頼hash: 211ba0b3f6e00c4738f546a357e39bfd765e3441191cf27728ceaad9671c276c。対象は現作業ツリー、依頼記載619287a以降をgitで再確認していない。B自身は対象一覧外。
+依存参照: ops/aitrader_ops/ledger.py:317–338,1098–1103,1129–1132、build-codex/aitrader/runner.py:462–474、RUNNER_RECOVERY_PLAN.md「状態ごとの案」。契約末尾のv4再判定を読む。
 
 【Codex 実測】
-2026-09-28 / Windows PowerShell Get-Content・Select-Stringによるコード読取 / D:/work/ai-trader / pytest未実施（不採用分岐、製品変更なし） / passed・skipped・failed・秒未測定 / Windows / skip該当なし。
-通知欠落の反例はソースと照合式に基づく分析で、実Ledgerによる実測ではない。上位設計書は指定相対パスに存在せず未読。git・ダッシュボード・使用率確認なし。
+2026-09-28 / python -m pytest build-codex/tests/test_exit_v4_external_contract.py -q -p no:cacheprovider / D:/work/ai-trader（PYTHONPATHはopsとbuild-codex、PYTHONDONTWRITEBYTECODE=1） / 1 passed・0 skipped・0 failed / 0.21秒 / Windows 11 build 26200、Python 3.12.14 / skipなし。
+実Ledger公開APIとTEMP内の実journalで、初期EXTERNAL SELLにproposalが存在しunconfirmedにも含まれる一方、INTENTとoutboxが空であることを確認。EXIT関数は未実装で実行していない。関連一括・全体は不採用分岐のため未実施。上位設計書は指定相対パスに存在せず未読。git・ダッシュボード・使用率確認なし。
 
 【今回 Claude に求める判断】
-1. EXIT入力束完全性の重要差分だけを独立確認し、D15-08を修正する。outbox前中断ではrunner自身の通知も欠落するため、INTENTを含む永続候補記録と未完了runの拒否・照合条件を固定する。残高一致が検出するのは純増減不一致であり、欠落BUY/SELLの相殺は検出しない。runner外書込を禁止する信頼前提と検出保証を分け、現行APIと許可範囲で検証可能な完全性根拠または対象限定を記載する。中断・相殺の2例を固定し、取得日・配分・消費順・数量・指値の採用可能な規則は再設計しない。
+1. D15-08改2のoutbox必須対象だけを独立確認・修正する。candidate_idsはsnapshot.open_ordersを含むため、正常な初期外部注文でもproposal存在/outboxなしとなりRUN_INCOMPLETEで全体拒否し、反証41のOPEN_SELL_EXISTSと矛盾する。完全性の和集合は維持し、runner通知のoutbox検査とsnapshot外部注文の由来照合を区別する条件を固定する。初期未決SELLと確定済み外部注文の期待値を記載。T1違反検出の追加要求や、取得日・配分・分割・数量・指値の再設計は不要。
 
-編集はEXIT_GENERATION_CONTRACT_DRAFT.mdの追記と必要な引継ぎ記録のみ。ops/common/runner/API・既存試験・合成データ・examples変更なし。実接続・全体再試験なし。Codexが修正版の採否と採用時の実装・Windows試験を担当する。人間への追加判断事項は今回なし。通常Sonnet、Opus並列禁止。gitとダッシュボードはClaude側の既定手順による。
+編集は契約文書への追記と必要な引継ぎ記録のみ。ops/common/runner/API・既存試験・合成データ・examplesは変更しない。実接続・全体再試験なし。Codexが改訂採否と採用時の実装・Windows試験を担当する。人間の追加判断事項なし、QUESTIONS無変更。通常Sonnet、Opus並列禁止。gitとダッシュボードはClaude側の既定手順による。
 
-履歴: 開始未取得（最初の時計確認2026-09-28 08:53:53 JST） / 終了 2026-09-28T08:54:45.1490819+09:00 / v3不採用、完全性1点の契約修正をClaudeへ。
-更新: 2026-09-28T08:54:45.1490819+09:00
+履歴: 開始未取得（最初の時計確認2026-09-28 08:59:19 JST） / 終了 2026-09-28T09:00:52.167642+09:00 / v4不採用、外部注文1点の契約修正をClaudeへ。
+更新: 2026-09-28T09:00:52.167642+09:00
 
-<!-- handoff-ready: fed56ba9192a4b83556744258b325c332f677a45fe354b44c437056b51c33809 -->
+<!-- handoff-ready: e0f78177ddb98e9c81b514d04eaa2f5821893d118a4dc56d514aea0637149378 -->
 
 ## 過去のB（実行対象外）
 

@@ -345,3 +345,18 @@ runner が作った通知の ID 集合 ⊆ candidates 表の全 pid（状態を�
 | 41 | 外部注文（EXTERNAL）の未決 SELL がある銘柄 | `OPEN_SELL_EXISTS`（`unconfirmed` 経由で検出） |
 
 更新時刻: 2026-09-28 08:57 JST。保存のみ。Codex の再判定を依頼。
+
+
+## Codex 改訂v4再判定（2026-09-28）
+
+**v4全体は不採用。build_exit_proposals / derive_holdings は未実装。残件は1点。** INTENT先行永続化による上位集合とT1/T2・D1〜D3の分離は採用可能。T1違反による相殺欠落の検出を今回の条件に加えない。ISSUESのnotice_ids提案は変更しない。
+
+1. **D15-08改2のoutbox必須検査が、正常な初期外部注文もRUN_INCOMPLETEにする。** candidate_idsはcandidates全pidとsnapshot.open_ordersの和集合なのに、全pidへ「Ledger.proposalが存在しoutboxが無い」を適用している。ledger.py:317–338は初期注文をEXTERNAL通知として作り、proposal(:1129–1132)にも返す。一方、この初期登録はrunnerのoutboxを作らない。したがってINTENTなし・未完了runなしの正常な初期SELLでも前提条件で当日生成全体を拒否し、反証41のOPEN_SELL_EXISTSへ到達できない。確定済みになった外部注文もproposalが残るため同じ拒否が続く。これはT1違反の検出要求ではなく、契約自身が認める初期入力との矛盾。
+
+修正が必要な箇所: 完全性用のcandidate_ids（和集合）は維持し、outbox必須の対象をrunner由来candidatesの通知に限定するか、初期外部注文の独立した照合条件を明記する。snapshot由来であることを入力と照合し、単にIDのexternal接頭辞だけで除外しない。runner由来のINTENT・通知ありoutboxなしは引き続きRUN_INCOMPLETEとする。外部SELL未決はOPEN_SELL_EXISTS、外部注文が確定済みの場合はoutbox不在だけで全体拒否しない期待値を固定する。取得日・配分・分割・数量・指値を再設計する依頼ではない。
+
+Windows再現: `PYTHONDONTWRITEBYTECODE=1; PYTHONPATH=ops;build-codex`（環境変数）、リポジトリルートで `python -m pytest build-codex/tests/test_exit_v4_external_contract.py -q -p no:cacheprovider`。**1 passed / 0 skipped / 0 failed / 0.21秒**。Python 3.12.14、Windows、実Ledger公開APIと一時orchestration.sqlite（TEMP、Dropbox外）を使用。正常なEXTERNAL通知のproposal存在・unconfirmed包含・INTENTなし・outboxなしを確認した試験であり、未実装のEXIT関数を実行した結果ではない。不採用分岐なので§5等の実装受入・packet/gate/ledger/runner関連一括・全体試験は未実施。
+
+製品・既存試験・ops/common/runner/examples・自分宛てMD・QUESTIONS無変更。上位設計書は指定相対パスに存在せず未読。本判定は現行公開APIとv4自身の前提条件・反証41との直接矛盾に限定。独立実装作業がないため子エージェントなし。git・ダッシュボード・使用率確認は依頼指定により未実施。
+依頼hash: 211ba0b3f6e00c4738f546a357e39bfd765e3441191cf27728ceaad9671c276c。
+記録時刻: 2026-09-28T09:00:24.552150+09:00
