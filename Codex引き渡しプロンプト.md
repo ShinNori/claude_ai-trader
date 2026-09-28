@@ -67,18 +67,43 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 完了したら build-codex/README.md の末尾に「今回やったこと・テスト件数と結果・Claude に伝えたい点」を追記する。
 ```
 
-## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-28 11:41 第22回）
+## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-29 08:46 工程5 再開契約）
 
-**発行時刻: 2026-09-28 11:41 JST（Claude / Claude Code。保存のみ・未公開。handoff-ready マーカーは付けない）**
+**発行時刻: 2026-09-29 08:46 JST（Claude / Claude Code、作業フォルダ D:\work\ai-trader。見張り経由で公開）**
 ※ 自動連携は別枠（tools/automation/、auto チャネル）。この B には混ぜない。
+※ 見張り経由の Codex は git とダッシュボード更新を行わない（Claude が代行）。作業ツリーは最新 HEAD 以降。
 
 ```
-今回の依頼: 引き渡し不要（第22回: R21-01〜03 の採用と D4 実装を独立確認、契約と一致。工程 3 の EXIT 生成はここで区切り。次工程は別依頼）
+今回の依頼: 工程 5「異常終了・PC 停止からの明示的な再開」の契約案 D16-01〜06（RUNNER_RESUME_CONTRACT_DRAFT.md）の実装可能性確認と採否。採用なら runner の再開経路を実装し Windows 実測する
 
-確認結果: build-codex/EXIT_GENERATION_INDEPENDENT_REVIEW.md の追補（第22回）。D4 の予約照合（SELL reserved_shares / BUY reserve の銘柄別合算と view の両 map のキー和集合・ゼロ補完）は契約と一致。
-Claude の反証 1 件は修正前の挙動を固定していたため D4 採用後の期待値へ更新（当方ファイルのみ）。当方 23 件＋Codex R21 試験 15 件で 38 passed。
-git: Codex の実装・試験・文書と Claude の更新を Claude がコミット・push。次工程（runner 接続・保存契約、または工程 5 復旧）は共通指示.md のキューで別途起こす。
+一次資料: build-codex/RUNNER_RESUME_CONTRACT_DRAFT.md（Claude 作成、2026-09-29 08:46 JST）。共通指示.md キュー #6 への回答。
+RUNNER_RECOVERY_PLAN.md の状態表と RUNNER_RECOVERY_CONTRACT_PROPOSAL.md（Codex の 3 契約案）を前提に、ops を変えずに今すぐ実装できる
+「Tier A」を切り出した。対象は INTENT/CREATED と INTENT/APPROVED の 2 状態のみ、同 run_id・同入力・執行日当日・締切前・STOP なし。
+- D16-02 所有の証拠: T1（通知は runner だけが作る）の下で、journal 行と台帳 proposal/notice の 6 項目一致（候補 hash・CREATED 時刻が run 開始後・
+  後続操作なし・約定なし・予約額が reserve_amount どおり・同銘柄に他通知なし）。違えば OWNERSHIP_UNPROVEN で書込なし。台帳 receipt は Tier B（将来）。
+- D16-03 二重評価の回避: build-codex 側で自分の予約だけを引いた LedgerView の写しを作り gate へ渡す。seq を前後で照合し、進めば SEQ_CHANGED で書込なし。
+- D16-04: CREATED は再評価して許可なら APPROVED → journal 1 トランザクション。不許可なら何も書かない。APPROVED は締切・STOP・二承認の再確認のみで journal 反映。
+  create_notice は再開経路で呼ばない。締切後は再開しない。
+- D16-05 記録（manifest.resumes、result.resume）、D16-06 限界（電源断・外部書込・WAL）と人の操作手順、固定例 5 種、反証表 24 件。
+
+1. 実装可能性と既存契約（runner の既存検査・gate の純粋性・台帳の状態遷移・診断の分類）との矛盾だけ確認し、採否を契約案末尾に記載する。
+   不採用なら不足点を 3 点以内で。§9 の未確定 4 点を決める。
+2. 採用なら build-codex/aitrader/runner.py の再開経路（「台帳だけに通知が存在します」の分岐）を D16-01〜05 に置き換える。
+   除外 view の写しは新規モジュール（例: aitrader/runner_resume.py）に置き、gate・ops・common は変更しない。既存試験の期待値は変えない
+   （既存の「台帳だけに通知が存在」を期待する試験があれば、その assert が D16 の理由コードへ変わる箇所を列挙して報告する）。
+3. 試験を新規追加する（§8 の 24 件を目安。例外注入は monkeypatch、DB は TEMP）。
+4. Windows 実測 1 回: 新規試験＋runner/managed_stop/ledger/gate の関連試験。passed/skipped/failed/秒/環境を記録。全体は製品を変えたため Codex の判断で 1 回。
+5. README 末尾に短く記録し、Claude 向け次回 B を必須 3 項目様式で保存・公開する。次に Claude に求めるのは再開経路の重要差分
+   （所有の証拠・除外 view・seq 照合・書込点）の独立確認 1 点。
+
+編集範囲は build-codex/aitrader/runner.py（再開分岐のみ）、build-codex/aitrader/runner_resume.py（新規）、build-codex/tests/（新規）、契約文書、README、
+Claude_Opusキャッチボール.md。ops/・common/・gate・既存試験の期待値・合成データ・examples・Claude の新規試験・自分宛て MD は変更しない。
+既存試験の削除・skip・xfail・条件緩和は禁止。実API・実売買審査・LINE・証券接続・発注・使用率確認は行わない。自動再開・予約の自動解放は実装しない。
+
+完了条件: 1 の採否記載、（採用時）2〜4、5 の保存・公開。不採用なら 1 と 5 のみ。
 ```
+
+<!-- handoff-ready: 34a887889a1d8feea9bc9637feeff437671c2a115d30f2922eede88c9864a6aa -->
 
 ---
 
@@ -135,5 +160,6 @@ git: Codex の実装・試験・文書と Claude の更新を Claude がコミ�
 | 2026-09-28 09:06 | （Claude）工程3: EXIT 契約の改訂 v6（snapshot/adjustments は明示入力、journal は candidates のみ）を追記し再判定を依頼 | v5 再判定の残り 1 点に回答（公開）。受領 20/20 |
 | 2026-09-28 11:32 | （Claude）第21回: EXIT 生成 v6 実装の独立確認（前提条件・照合式・分割換算・取得日・配分・消費順・数量・指値） | EXIT_GENERATION_INDEPENDENT_REVIEW.md。実装バグ 0。新規反証 23 件 23 passed。R21-03（中）reserved_shares 照合の未使用、R21-01/02（低）。Codex へ採否を依頼（公開） |
 | 2026-09-28 11:41 | （Claude）第22回: R21-01〜03 採用と D4 実装の独立確認（一致）。反証の期待値 1 件を D4 に合わせて更新、38 passed | 引き渡し不要（保存のみ・未公開）。工程 3 区切り |
+| 2026-09-29 08:46 | （Claude）工程5: 明示的な再開の契約案 D16-01〜06（Tier A: ops 変更なし、INTENT/CREATED・APPROVED の 2 状態） | RUNNER_RESUME_CONTRACT_DRAFT.md。Codex へ採否・実装・実測を依頼（公開） |
 
 ※ Cowork（このセッション）からの `tools/run_codex_build.*` 自動起動は、Anthropic 側のネットワーク方針で OpenAI に到達できず失敗する（2026-09-08 確認）。自動起動は則光さんの PC 上の Claude Code から行う。往復の自動化は `tools/pingpong.ps1`（`tools/PINGPONG.md` 参照、2026-09-09 追加）。
