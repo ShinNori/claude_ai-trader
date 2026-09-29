@@ -191,7 +191,7 @@ def test_existing_home_and_dropbox_target_are_untouched(tmp_path):
         initialize_managed_mock(home, 1_000_000, [], AT, settings=SETTINGS)
     assert list(home.iterdir()) == [marker]
 
-    forbidden = Path(__file__).resolve().parents[2]/'__managed_stop_forbidden__'
+    forbidden = tmp_path/'Dropbox'/'__managed_stop_forbidden__'
     assert not forbidden.exists()
     with pytest.raises(ValueError, match='Dropbox'):
         initialize_managed_mock(forbidden, 1_000_000, [], AT, settings=SETTINGS)

@@ -1553,3 +1553,18 @@ Windows NT 10.0.26200.0 / Python 3.12.14 / pytest 9.1.1。新規31件は **31 pa
 運用記録: 子が既存失敗1件をdeselectする再実行を開始したが、親指示で中断し結果不採用。失敗を含む一括結果を最終結果とする。既存試験がrepo直下に生成した模擬DBはTEMPへ退避。保護230ファイルの開始時hash一致。git・ダッシュボード・使用率確認・実API/審査/LINE/証券/発注なし。Sol1体が実装/試験、親が採否・重要差分・文書を担当し、Claude独立確認済みとはしない。
 
 次担当Claudeは再開経路（所有・除外view・seq・書込点・BUY/SELL停止）の重要差分を独立確認する1工程。[次回B](Claude引き渡しプロンプト.md)を最後に更新しdev公開する。工程5の限定実装提出であり、独立確認や案件全体は未完了。依頼hash: 6c5fe10bcabbb54cf83848833af0d0bd9ac12a2b77dc81cbf65098891d27fab5。記録時刻: 2026-09-29T09:09:04+09:00。
+
+## 2026-09-29 第25回受領・R25-01修正（Codex）
+
+[独立確認報告](RUNNER_RESUME_INDEPENDENT_REVIEW.md)を受領。製品2ファイル・Codex試験・Claude新規試験のSHA256は報告値と一致。バグ0・判断1点は契約と一致、反証6 passed / 1.82秒はClaude実測値として記録し、再実行していない。
+
+R25-01は `tests/test_managed_stop.py::test_existing_home_and_dropbox_target_are_untouched` の拒否対象1行を `tmp_path/'Dropbox'/'__managed_stop_forbidden__'` へ変更。既存home保全・Dropbox拒否・対象未作成のassert、製品ガード、他の試験は無変更。
+
+Windows / Python 3.12.14、`PYTHONPATH=ops;build-codex`、`PYTHONDONTWRITEBYTECODE=1` で実測:
+```text
+python -m pytest -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-r25-01-20260929 build-codex/tests/test_managed_stop.py -q
+24 passed / 0 skipped / 0 failed / 6.79秒
+```
+全体試験は未実施。前回318 passed / 1 failedは当時の記録として保持する。工程5 Tier Aは区切り、案件全体の完了ではない。今回は引き渡し不要。runner接続・スナップショット永続化、Tier B、翌日予約は共通指示.mdのキューで別途起こす。git・ダッシュボード・使用率確認・実接続なし。QUESTIONS・自分宛てMD無変更。単一の局所修正のため子エージェントなし。
+
+依頼hash: d25af62b7a4ddd49e24d078a9a62fad8c0fa0355d3a782c5ce6bf48194967bf3。記録: 2026-09-29 09:20 JST。成果・履歴保存後、相手宛てBを最後に更新しdev公開する。

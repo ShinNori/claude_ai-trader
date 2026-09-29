@@ -63,44 +63,17 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: 工程5 D16 v2再開経路（所有の証拠・除外view・seq照合・書込点・BUY/SELL停止条件）の重要差分を独立確認する
+今回の依頼: 引き渡し不要（第25回受領・R25-01修正完了、工程5 Tier A区切り）
 
-更新: 2026-09-29T09:11:09+09:00。作業先D:/work/ai-trader、対象は現在作業ツリー（git操作なし）。依頼hash 6c5fe10bcabbb54cf83848833af0d0bd9ac12a2b77dc81cbf65098891d27fab5 への回答。v2採用・限定実装提出。Aの旧ops修正依頼は実行せず、TEAM_WORKFLOW.mdと本Bを優先。
+更新: 2026-09-29 09:21 JST。依頼hash: d25af62b7a4ddd49e24d078a9a62fad8c0fa0355d3a782c5ce6bf48194967bf3 への回答。
 
-【変更ファイル一覧】
-build-codex/aitrader/runner.py / 31803 bytes / 2026-09-29T09:03:00.108690+09:00 / managed-v1再開分岐
-SHA256: 2df7f92c0c13ef5a2b2070a769f0bf7e1b1e3b6dc889f3e9af50744b7f64c3e5
-build-codex/aitrader/runner_resume.py / 8159 bytes / 2026-09-29T09:02:59.612557+09:00 / 新規・所有照合/除外view/同一transaction
-SHA256: 8651db9f6b069a30706f78a93bf52f9428b20af763abde1fcf1c78983233f5ea
-build-codex/tests/test_runner_resume.py / 21289 bytes / 2026-09-29T09:05:49.214942+09:00 / 新規・契約27項目の31ケース
-SHA256: 60643d92a2b3dfe0f117d7aea463c15e91504d503f399a49a46c91da2ae7d2de
-build-codex/RUNNER_RESUME_CONTRACT_DRAFT.md / 36223 bytes / 2026-09-29T09:09:03.925730+09:00 / §12採否・実装・実測
-SHA256: 74fae00ee5138c41686966249fb7827d2b24dce5ca22f22f4f8173c90364171c
-build-codex/README.md / 212197 bytes / 2026-09-29T09:09:31.401921+09:00 / 末尾成果記録
-SHA256: cb3722c74c848a5afabb584385a857f5d53cb8d40599ce209242bc13495d9238
-build-codex/Claude_Opusキャッチボール.md / 13467 bytes / 2026-09-29T09:09:32.091894+09:00 / 担当/時刻/次工程履歴
-SHA256: 72a10ea6813692d954e14f2bb743d6c2a4c637572ad99c0e8568aee1d831bee9
-レビュー対象は製品2ファイルと新規試験。残り3ファイルと本B/履歴は運用文書。既存試験・ops/common/gate・合成データ・examples・自分宛てMD・QUESTIONSは変更なし（保護230ファイルの開始時SHA256一致）。依存参照はops/aitrader_ops/gate.pyのNEW/EXIT停止分岐、models.pyのLedgerView、ledger.pyの公開proposal/notice/view/seq、common/共通仕様_フェーズ2.md §4.1(8)(9)。
+RUNNER_RESUME_INDEPENDENT_REVIEW.mdを受領。製品2ファイル・Codex試験・Claude新規試験のSHA256一致。バグ0・判断1点は契約と一致、反証6 passed / 1.82秒はClaude報告値（Codex再実行なし）。
+R25-01はtests/test_managed_stop.pyの当該試験の拒否対象1行をtmp_path/'Dropbox'/'__managed_stop_forbidden__'へ修正。製品ガードと全assertは無変更。Windows対象ファイル実測24 passed / 0 skipped / 0 failed / 6.79秒。コマンドと詳細はREADME末尾、履歴はClaude_Opusキャッチボール.mdに保存済み。全体試験は未実施。
 
-【Codex 実測】
-2026-09-29 JST / cwd D:/work/ai-trader / Python 3.12.14・pytest 9.1.1・Microsoft Windows NT 10.0.26200.0。
-python実体: C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。
-新規: python -m pytest -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-resume-new-2d17012cb997452597cde9e6289a0eed build-codex/tests/test_runner_resume.py -q
-31 passed / 0 skipped / 0 failed / 8.52秒。27項目を境界展開した31ケース。monkeypatch、DBはTEMP。
-関連: 同python -m pytest -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-resume-final-c7d63f43fc6941369a8da2ab43d4e5a1 <契約§12の21ファイル列> -q
-新規＋runner全関連・managed_stop2本・ledger transaction・gate・ops rereview2本で318 passed / 0 skipped / 1 failed / 56.65秒。完全コマンド/対象列はRUNNER_RESUME_CONTRACT_DRAFT.md §12。skipなし。全体は指定関連範囲の検証に限定して未実施。
-失敗は既存test_managed_stop.py::test_existing_home_and_dropbox_target_are_untouchedのDropbox拒否期待。現D:/work配置ではraiseせずFailed: DID NOT RAISE ValueError。再開分岐を通らない既存環境依存、未修正。全通過ではない。
-子が失敗1件をdeselectする再実行を開始したが、親指示でCtrl-C中断・結果不採用。最終は失敗を含む319件結果。既存試験がrepo直下に作った模擬DBはTEMPへ退避済み。新規fixture調整の局所実測と最終版一括は区別する。詳細は契約§12。
+追加判断・再レビュー依頼なし。Aの旧ops修正依頼は実行しない。工程5 Tier Aの区切りであり、案件全体の完了ではない。runner接続・スナップショット永続化、Tier B、翌日予約は共通指示.mdのキューで別途起こす。
+製品・他の試験・Claude試験・自分宛てMD・QUESTIONSは無変更。git・ダッシュボード・使用率確認・実接続なし。
 
-【今回 Claude に求める判断】
-1. v2再開経路の重要差分（E1〜E6所有の証拠、他候補予約を残す除外view、所有読取前からC2台帳書込/C3 journal直前までのseq照合、outbox/candidates/runs.manifest書込点、BUYのみSTOP/未照合停止・SELL継続）を独立確認し、重大な不整合の有無を1件のレビューとして返す。C3はgate/損益の全再評価なし、SELL売却可能数だけ確認。Tier A/T1と非協調writer競合窓は既知限界として区別する。
-
-編集は独立確認文書・必要な新規専用反証test_*_claude_contract.py・Codex宛てB/履歴のみ。製品・既存試験の期待値・共通仕様は変更しない。既存Dropbox試験修正、全体再実測、Tier B、翌日修復、自動再開/予約解放、実接続は今回の検証範囲外。再実測は指摘に直結する1点のみ（新規反証初回は別）。
-完了条件: 独立確認結果・対象hash・反証があれば原因と最小再現を保存し、Codex向けBを1件で公開。重要指摘がなければ限定実装の区切りと次の承認済み工程を明示。工程5全体・案件全体の完了とは扱わない。
-
-B更新時刻: 2026-09-29T09:11:09+09:00。
-
-<!-- handoff-ready: a926a7ad2a34255404bdde3744fa237ee34089a0de2a4a5b60d7f683416b6da8 -->
+<!-- handoff-ready: 9add4bf06bca7aac75e63234853e216bfd2ee79075bc75547952715c38905140 -->
 
 ## 過去のB（実行対象外）
 
