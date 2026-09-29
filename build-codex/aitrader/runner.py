@@ -391,12 +391,101 @@ def run(home, run_id, execution_day, proposals, verdicts, now, valuation,
                     if prior_body is not None:
                         outbox.append(prior_body)
                     continue
+            seq_before_notice_read = ledger.seq()
             try:
-                ledger.notice(p.proposal_id)
+                existing_notice = ledger.notice(p.proposal_id)
             except KeyError:
-                pass
+                existing_notice = None
             else:
-                raise RunError('台帳だけに通知が存在します。照合が必要です')
+                if prior is None or policy is None:
+                    raise RunError('台帳だけに通知が存在します。照合が必要です')
+                from .runner_resume import (
+                    ResumeRefused, finalize_resume, owned_notice,
+                    reservation_excluded_view, require_sellable,
+                    resume_manifest, resumed_item, validate_verdicts,
+                )
+                try:
+                    from_state, owned, created_at = owned_notice(
+                        ledger, journal, p, ps, run_id=run_id, manifest=manifest,
+                        now=now, digest=digest,
+                        normalize_proposal=normalize_proposal)
+                    if now < aware(manifest['started_at']) or now >= deadline:
+                        raise ResumeRefused('RESUME_WINDOW_CLOSED')
+                    stop = inspect_managed_stop(home, now=now)
+                    unresolved = (unresolved_unconfirmed or bool(ledger.unconfirmed(now))
+                                  or bool(ledger.pending_rows()))
+                    if p.side == 'BUY':
+                        if not stop['known']:
+                            raise ResumeRefused('STOP_STATE_UNKNOWN')
+                        if stop['effective_stop']:
+                            raise ResumeRefused('STOP_ACTIVE')
+                        if unresolved:
+                            raise ResumeRefused('UNRESOLVED_LEDGER')
+                    received = validate_verdicts(
+                        p, verdicts.get(p.proposal_id, []), run_id=run_id,
+                        execution_day=execution_day, now=now, deadline=deadline,
+                        aware=aware)
+                    view = reservation_excluded_view(ledger.view(), owned, p)
+                    gate_result = None
+                    if from_state == 'CREATED':
+                        values = valuation.calculate(view, marks)
+                        view.daily_pnl = values['daily_pnl']
+                        view.day_start_equity = values['day_start_equity']
+                        slots = journal.execute(
+                            "SELECT count(*) FROM candidates WHERE day=? AND side='BUY' "
+                            "AND state IN ('INTENT','APPROVED') AND pid<>?",
+                            [execution_day.isoformat(), p.proposal_id]).fetchone()[0]
+                        gate_result = evaluate(
+                            p, received, now, view, limits, values['equity'],
+                            values['equity'], 0, stop['effective_stop'], unresolved,
+                            business_days=business_days)
+                        extra = []
+                        if p.side == 'BUY' and slots >= limits.max_new_per_day:
+                            extra.append('DAILY_NEW_LIMIT')
+                        if (p.side == 'BUY'
+                                and Decimal(values['adjusted_equity'])
+                                <= Decimal(values['peak_equity'])*(1-Decimal(str(limits.drawdown_stop)))):
+                            extra.append('DRAWDOWN_STOP')
+                        if extra:
+                            gate_result.allowed = False
+                            gate_result.reason_codes.extend(extra)
+                        if not gate_result.allowed:
+                            raise ResumeRefused(gate_result.reason_codes[0] if gate_result.reason_codes else 'GATE_REJECTED')
+                        latest = inspect_managed_stop(home, now=now)
+                        if p.side == 'BUY' and not latest['known']:
+                            raise ResumeRefused('STOP_STATE_UNKNOWN')
+                        if p.side == 'BUY' and latest['effective_stop']:
+                            raise ResumeRefused('STOP_ACTIVE')
+                        if ledger.seq() != seq_before_notice_read:
+                            raise ResumeRefused('SEQ_CHANGED')
+                        ledger.set_notice_state(p.proposal_id, 'APPROVED', now)
+                        seq_after = ledger.seq()
+                    else:
+                        require_sellable(p, view)
+                        seq_after = seq_before_notice_read
+                    item = resumed_item(
+                        prior_result, gate_result, at=now, from_state=from_state,
+                        created_at=created_at, seq_after=seq_after,
+                        gate_reevaluated=from_state == 'CREATED', plain=plain)
+                    if from_state == 'CREATED':
+                        item['valuation'] = values
+                        item['stop_observations'] = [stop, latest]
+                    updated_manifest = resume_manifest(
+                        manifest, p.proposal_id, from_state, at=now,
+                        seq_before=seq_before_notice_read, seq_after=seq_after)
+                    if (from_state == 'APPROVED'
+                            and ledger.seq() != seq_before_notice_read):
+                        raise ResumeRefused('SEQ_CHANGED')
+                    body = finalize_resume(
+                        journal, p, execution_day, item, updated_manifest,
+                        encoded=encoded)
+                    manifest.clear()
+                    manifest.update(updated_manifest)
+                    results.append(item)
+                    outbox.append(body)
+                    continue
+                except ResumeRefused as exc:
+                    raise RunError(f'NEEDS_RECONCILIATION: {exc.code}') from None
             vs = verdicts.get(p.proposal_id, [])
             received = []
             invalid = False

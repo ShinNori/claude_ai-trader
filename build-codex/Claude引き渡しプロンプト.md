@@ -63,29 +63,44 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 
 ## B. 今回の依頼
 
-今回の依頼: 工程5 D16-R1（再開時のSTOP・未照合条件のBUY/SELL適用）の独立確認と契約整合
+今回の依頼: 工程5 D16 v2再開経路（所有の証拠・除外view・seq照合・書込点・BUY/SELL停止条件）の重要差分を独立確認する
 
-更新: 2026-09-29T08:53:00+09:00。作業先 D:/work/ai-trader。依頼hash 34a887889a1d8feea9bc9637feeff437671c2a115d30f2922eede88c9864a6aa への採否回答。対象は現在作業ツリー、git操作によるHEAD確認なし。Aの旧ops修正依頼は実行しない。TEAM_WORKFLOW.md優先。
+更新: 2026-09-29T09:11:09+09:00。作業先D:/work/ai-trader、対象は現在作業ツリー（git操作なし）。依頼hash 6c5fe10bcabbb54cf83848833af0d0bd9ac12a2b77dc81cbf65098891d27fab5 への回答。v2採用・限定実装提出。Aの旧ops修正依頼は実行せず、TEAM_WORKFLOW.mdと本Bを優先。
 
 【変更ファイル一覧】
-build-codex/RUNNER_RESUME_CONTRACT_DRAFT.md / 23614 bytes / SHA256 8cd1d76f280d8d8dde8fbd6c65634ec93cb8bc6cf1025930ba5ba46113c48ed7
-build-codex/README.md / 210277 bytes / SHA256 4944932bcc6bd21205939f6f4123543fade9ac4ee1939fa1308e3d73e4428318
-build-codex/Claude_Opusキャッチボール.md / 12414 bytes / SHA256 d0c21643448d2e87ab2997bb200cee22d51ce9cdde30083013841ed720959c82
-本引き渡しBと下記履歴も更新。製品・既存試験・新規試験・自分宛てMD・QUESTIONSは変更なし。
+build-codex/aitrader/runner.py / 31803 bytes / 2026-09-29T09:03:00.108690+09:00 / managed-v1再開分岐
+SHA256: 2df7f92c0c13ef5a2b2070a769f0bf7e1b1e3b6dc889f3e9af50744b7f64c3e5
+build-codex/aitrader/runner_resume.py / 8159 bytes / 2026-09-29T09:02:59.612557+09:00 / 新規・所有照合/除外view/同一transaction
+SHA256: 8651db9f6b069a30706f78a93bf52f9428b20af763abde1fcf1c78983233f5ea
+build-codex/tests/test_runner_resume.py / 21289 bytes / 2026-09-29T09:05:49.214942+09:00 / 新規・契約27項目の31ケース
+SHA256: 60643d92a2b3dfe0f117d7aea463c15e91504d503f399a49a46c91da2ae7d2de
+build-codex/RUNNER_RESUME_CONTRACT_DRAFT.md / 36223 bytes / 2026-09-29T09:09:03.925730+09:00 / §12採否・実装・実測
+SHA256: 74fae00ee5138c41686966249fb7827d2b24dce5ca22f22f4f8173c90364171c
+build-codex/README.md / 212197 bytes / 2026-09-29T09:09:31.401921+09:00 / 末尾成果記録
+SHA256: cb3722c74c848a5afabb584385a857f5d53cb8d40599ce209242bc13495d9238
+build-codex/Claude_Opusキャッチボール.md / 13467 bytes / 2026-09-29T09:09:32.091894+09:00 / 担当/時刻/次工程履歴
+SHA256: 72a10ea6813692d954e14f2bb743d6c2a4c637572ad99c0e8568aee1d831bee9
+レビュー対象は製品2ファイルと新規試験。残り3ファイルと本B/履歴は運用文書。既存試験・ops/common/gate・合成データ・examples・自分宛てMD・QUESTIONSは変更なし（保護230ファイルの開始時SHA256一致）。依存参照はops/aitrader_ops/gate.pyのNEW/EXIT停止分岐、models.pyのLedgerView、ledger.pyの公開proposal/notice/view/seq、common/共通仕様_フェーズ2.md §4.1(8)(9)。
 
 【Codex 実測】
-Windows上のコード・契約読取確認のみ。D16現案は不採用のため依頼1と5を実施し、pytest・Windows動作実測・全体試験は未実施。passed/skipped/failed/秒は該当なし。工程5の実装成功や試験通過とは扱わない。runner.py未編集、runner_resume.pyと新規D16試験は未作成。Sol 1体は読取確認のみ。
+2026-09-29 JST / cwd D:/work/ai-trader / Python 3.12.14・pytest 9.1.1・Microsoft Windows NT 10.0.26200.0。
+python実体: C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe。
+新規: python -m pytest -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-resume-new-2d17012cb997452597cde9e6289a0eed build-codex/tests/test_runner_resume.py -q
+31 passed / 0 skipped / 0 failed / 8.52秒。27項目を境界展開した31ケース。monkeypatch、DBはTEMP。
+関連: 同python -m pytest -p no:cacheprovider --basetemp C:/Users/s/AppData/Local/Temp/ai-trader-resume-final-c7d63f43fc6941369a8da2ab43d4e5a1 <契約§12の21ファイル列> -q
+新規＋runner全関連・managed_stop2本・ledger transaction・gate・ops rereview2本で318 passed / 0 skipped / 1 failed / 56.65秒。完全コマンド/対象列はRUNNER_RESUME_CONTRACT_DRAFT.md §12。skipなし。全体は指定関連範囲の検証に限定して未実施。
+失敗は既存test_managed_stop.py::test_existing_home_and_dropbox_target_are_untouchedのDropbox拒否期待。現D:/work配置ではraiseせずFailed: DID NOT RAISE ValueError。再開分岐を通らない既存環境依存、未修正。全通過ではない。
+子が失敗1件をdeselectする再実行を開始したが、親指示でCtrl-C中断・結果不採用。最終は失敗を含む319件結果。既存試験がrepo直下に作った模擬DBはTEMPへ退避済み。新規fixture調整の局所実測と最終版一括は区別する。詳細は契約§12。
 
 【今回 Claude に求める判断】
-独立確認はD16-R1の1点：RUNNER_RESUME_CONTRACT_DRAFT.md §11を読み、§1/§4のSTOP・未確認/pendingによる一律再開停止を、共通仕様フェーズ2 §4.1(8)(9)、gateのNEW/EXIT分岐、RUNNER_RECOVERY_PLAN.mdの「復旧だけに独自の停止仕様を入れない」と整合させる。Codex推奨はBUY限定。SELLも停止する新契約を採る場合は既存契約との相違を明示し、単なる実装詳細として扱わない。
+1. v2再開経路の重要差分（E1〜E6所有の証拠、他候補予約を残す除外view、所有読取前からC2台帳書込/C3 journal直前までのseq照合、outbox/candidates/runs.manifest書込点、BUYのみSTOP/未照合停止・SELL継続）を独立確認し、重大な不整合の有無を1件のレビューとして返す。C3はgate/損益の全再評価なし、SELL売却可能数だけ確認。Tier A/T1と非協調writer競合窓は既知限界として区別する。
 
-同§11の局所整合（元gate保持、runs.manifestを含むjournalトランザクション、E6の対象集合・固定例、SYSTEM_ERRORラッパーとdetail理由の区別）と§9の4判断を本文へ反映する。failure.jsonのトップレベルstatus変更は必須とは判定しておらず、それを別の阻害点に増やさない。所有照合・除外view・seq比較・状態遷移は実装可能と確認済みで、全件再レビューは不要。
+編集は独立確認文書・必要な新規専用反証test_*_claude_contract.py・Codex宛てB/履歴のみ。製品・既存試験の期待値・共通仕様は変更しない。既存Dropbox試験修正、全体再実測、Tier B、翌日修復、自動再開/予約解放、実接続は今回の検証範囲外。再実測は指摘に直結する1点のみ（新規反証初回は別）。
+完了条件: 独立確認結果・対象hash・反証があれば原因と最小再現を保存し、Codex向けBを1件で公開。重要指摘がなければ限定実装の区切りと次の承認済み工程を明示。工程5全体・案件全体の完了とは扱わない。
 
-編集範囲：RUNNER_RESUME_CONTRACT_DRAFT.mdの改訂・必要なレビュー文書と履歴、Codex向け次回B。製品・ops/common/gate・既存試験は変更しない。全体試験の繰返し不要。完了条件はD16-R1の結論と整合した契約、Codexへの採否再判定依頼の保存・dev公開。再開実装は次のCodex依頼。実接続・自動再開・予約自動解放へ広げない。
+B更新時刻: 2026-09-29T09:11:09+09:00。
 
-開始JST: 正確な開始未取得（最初の時計確認08:49:10、依頼発行08:46）。成果・履歴保存完了: 2026-09-29T08:53:00+09:00。git・ダッシュボード・使用率確認なし。公開はこのB保存後に実行する。
-
-<!-- handoff-ready: 7f97ce08c34190090bc2c8690b257171299bc2262bade17d271cbf0c8157e11c -->
+<!-- handoff-ready: a926a7ad2a34255404bdde3744fa237ee34089a0de2a4a5b60d7f683416b6da8 -->
 
 ## 過去のB（実行対象外）
 
@@ -183,3 +198,10 @@ python=C:/Users/s/.cache/codex-runtimes/codex-primary-runtime/dependencies/pytho
 
 
 | 未取得（最初の時計確認2026-09-29 08:49:10 JST） | 2026-09-29T08:53:00+09:00 | 工程5 D16契約採否 | 現案不採用、D16-R1の1点。製品変更/試験なし。Claudeへ契約整合依頼 |
+
+
+### 2026-09-29 D16 v2 実装提出履歴
+
+| 開始(JST) | 終了(JST) | 内容 | 結果 |
+|---|---|---|---|
+| 正確な開始未取得（最初の時計08:58:21、発行08:55） | 2026-09-29T09:11:09+09:00 | v2採用・managed-v1 C2/C3実装 | 新規31成功、関連318成功/1失敗、各skip0。次は重要差分独立確認 |

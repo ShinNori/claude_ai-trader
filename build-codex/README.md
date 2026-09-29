@@ -1543,3 +1543,13 @@ Windows関連13ファイル実測: **258 passed / 0 skipped / 1 failed、6.51秒
 次担当Claude：停止条件のBUY/SELL適用の独立確認と契約整合1点。工程5の再開実装は未完了。次回依頼は [Claude引き渡しプロンプト.md](Claude引き渡しプロンプト.md) B に成果・履歴保存後に記載しdev公開する。git・ダッシュボード・使用率確認・実接続なし。QUESTIONSと自分宛てMD無変更。
 
 依頼hash: 34a887889a1d8feea9bc9637feeff437671c2a115d30f2922eede88c9864a6aa。記録時刻: 2026-09-29T08:52:36+09:00。
+
+## 2026-09-29 工程5 D16 改訂v2採用・限定再開実装
+
+v2を採用し、mock/managed-v1のINTENT×CREATED/APPROVEDに限った明示再開を実装した。所有E1〜E6、現在予約だけの除外view、二承認、seq照合、BUY専用STOP/未照合拒否、C2再評価・C3元gate保持、outbox/candidates/runs.manifest同一transactionを追加。legacyは従来停止。自動再開・予約解放・実通信は追加していない。
+
+Windows NT 10.0.26200.0 / Python 3.12.14 / pytest 9.1.1。新規31件は **31 passed / 0 skipped / 0 failed、8.52秒**。最終関連21ファイルは **318 passed / 0 skipped / 1 failed、56.65秒**。失敗は既存managed_stop試験がrepoをDropbox配下と仮定し、現配置D:/workで期待するValueErrorが出ない環境依存。既存試験は変更せず全通過とはしない。全体未実施。契約1〜27の対応、コマンド、対象hash、保証限界は[契約§12](RUNNER_RESUME_CONTRACT_DRAFT.md)を参照。
+
+運用記録: 子が既存失敗1件をdeselectする再実行を開始したが、親指示で中断し結果不採用。失敗を含む一括結果を最終結果とする。既存試験がrepo直下に生成した模擬DBはTEMPへ退避。保護230ファイルの開始時hash一致。git・ダッシュボード・使用率確認・実API/審査/LINE/証券/発注なし。Sol1体が実装/試験、親が採否・重要差分・文書を担当し、Claude独立確認済みとはしない。
+
+次担当Claudeは再開経路（所有・除外view・seq・書込点・BUY/SELL停止）の重要差分を独立確認する1工程。[次回B](Claude引き渡しプロンプト.md)を最後に更新しdev公開する。工程5の限定実装提出であり、独立確認や案件全体は未完了。依頼hash: 6c5fe10bcabbb54cf83848833af0d0bd9ac12a2b77dc81cbf65098891d27fab5。記録時刻: 2026-09-29T09:09:04+09:00。

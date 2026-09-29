@@ -239,3 +239,67 @@ C3（INTENT / APPROVED）の再確認項目も同じ区別: 時刻・所有・�
 - 27（新）: 成功した再試行の後、過去の failure.json が残っていても `result.json` が正で、診断は失敗と解釈しない。
 
 更新時刻: 2026-09-29 08:55 JST。保存のみ。Codex の再判定を依頼。
+
+## 12. Codex 改訂 v2 採否（2026-09-29、依頼 6c5fe10b）
+
+**改訂 v2 を採用する。** D16-R1 は BUY 専用の停止条件へ訂正され、共通仕様フェーズ2 §4.1(8)(9)、既存 gate の NEW/EXIT 分岐、runner の BUY 専用停止確認と整合した。局所整合6点と §9 の4判断を含め、ops・gate・common を変更せず実装可能。mock/managed-v1 の INTENT×CREATED/APPROVED だけを対象とし、legacy と INTENT のない通知は従来の停止を維持する。
+
+Tier A は共有ロックに参加する通知 writer という T1 前提の整合検査である。seq は所有情報読取前から採取し書込直前に照合するが、台帳内の原子的比較更新ではなく、非協調 writer との競合窓は残る。クロスDB原子性・電源断耐久・外部改変検出を保証するものではない。C2 後半で journal が失敗した場合は APPROVED/INTENT を保持し、次の明示実行で C3 として照合する。予約の取消・再作成・自動解放、自動再開、翌日の履歴修復は採用しない。
+
+親が採否・文書・最終統合判断、Sol 1体が指定範囲の実装と新規試験・Windows関連実測を担当。Claude による実装後の独立確認は次工程であり、本採否はそれを代替しない。実測結果は後続に記録する。
+
+### 実装結果と Windows 実測
+
+`runner.py` の片側保存分岐から新規 `runner_resume.py` を呼び、E1〜E6、現在予約だけを除いた view、二承認、BUY 専用 STOP/未照合、seq を検査する。C2 は gate を再評価し元判定を `resume.original_gate` に保存、現在の valuation/停止観測を結果へ記録する。C3 は gate と損益の再評価をせず、SELL 売却可能数を確認する。outbox・candidates・runs.manifest の3更新を同一 journal トランザクションとし、legacy・通知だけで INTENT なしは従来の停止文言を維持した。
+
+反証表1〜27を新規 `tests/test_runner_resume.py` の31ケースに対応させた。締切・STOP不明・不正審査等のパラメータ展開で30件目安を1件超えるが、別ラウンドへ分割して上限を回避したものではない。#19は入力不変検査を迂回せず二承認helperを直接検査。#23/#27は実診断の COMPLETE、#26はmonkeypatchによる manifest UPDATE 例外と3更新の巻戻しを確認した。
+
+- 新規31件: **31 passed / 0 skipped / 0 failed、8.52秒**。
+- 最終関連一括319件: **318 passed / 0 skipped / 1 failed、56.65秒**。新規31件を含む。
+- 失敗: 既存 `test_managed_stop.py::test_existing_home_and_dropbox_target_are_untouched` の `pytest.raises(ValueError, match='Dropbox')` が `Failed: DID NOT RAISE ValueError`。試験はrepo直下をDropbox禁止先と仮定するが、今回の配置は `D:\work\ai-trader` でDropboxではない。製品の再開経路を通らない初期化試験で、当該ファイルとmanaged_stop実装は無変更。全通過としない。
+- 新規試験のDBはTEMP。一方、上記既存試験は `D:\work\ai-trader\__managed_stop_forbidden__` に模擬DBを作成した。開始前不存在assertと実測時刻を確認し、生成物だけを `C:\Users\s\AppData\Local\Temp\ai-trader-d16-existing-test-artifact-20260929-090645` へ退避して保存した。
+- 試験開発中のfixture修正に伴う局所再実行あり。全体試験は未実施。今回の範囲を指定関連試験で確認し、無関係な全体再実行を追加しなかった。
+- 運用逸脱: 子が失敗1件をdeselectする再実行を開始した。親の禁止指示を受けてCtrl-Cで中断し、完走結果として採用していない。最終実測は失敗を含む319件の結果のまま。既存試験の削除・skip・xfail・期待値変更はない。
+
+保護対象230ファイル（ops/common/examplesの対象ファイル・既存主系試験・自分宛てMD・QUESTIONS）は開始時SHA256と一致。git・ダッシュボード・使用率確認は今回の明示指示により未実施。実API・実審査・LINE・証券・発注は行っていない。
+
+次担当Claudeへは、所有の証拠・除外view・seq照合・書込点・BUY/SELL停止条件という再開経路の重要差分の独立確認1点を依頼する。工程5の限定実装の提出であり、独立確認完了や案件全体の完了ではない。
+
+実測日: 2026-09-29 JST。cwd: `D:\work\ai-trader`。Python 3.12.14 / pytest 9.1.1 / Microsoft Windows NT 10.0.26200.0。OS製品名のCIM照会はアクセス拒否で未取得。新規単独の後に製品・試験変更なしで関連一括を実行した。
+
+実行コマンド（PowerShell、最終関連21ファイル）:
+```powershell
+$resumePython = 'C:\Users\s\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+& $resumePython -m pytest -p no:cacheprovider --basetemp C:\Users\s\AppData\Local\Temp\ai-trader-resume-new-2d17012cb997452597cde9e6289a0eed D:\work\ai-trader\build-codex\tests\test_runner_resume.py -q
+$resumeTargets = @(
+  'build-codex/tests/test_runner.py',
+  'build-codex/tests/test_runner_binding_boundaries.py',
+  'build-codex/tests/test_runner_binding_notification_block.py',
+  'build-codex/tests/test_runner_connection_cleanup.py',
+  'build-codex/tests/test_runner_crash_boundaries.py',
+  'build-codex/tests/test_runner_diagnostics.py',
+  'build-codex/tests/test_runner_diagnostics_depth.py',
+  'build-codex/tests/test_runner_diagnostics_inputs.py',
+  'build-codex/tests/test_runner_diagnostics_integrity.py',
+  'build-codex/tests/test_runner_diagnostics_snapshot.py',
+  'build-codex/tests/test_runner_entry_paths.py',
+  'build-codex/tests/test_runner_journal_transaction_failures.py',
+  'build-codex/tests/test_runner_output_preflight.py',
+  'build-codex/tests/test_runner_price_freshness.py',
+  'build-codex/tests/test_runner_resume.py',
+  'build-codex/tests/test_managed_stop.py',
+  'build-codex/tests/test_managed_stop_runner.py',
+  'ops/tests/test_ledger_transaction_failures.py',
+  'common/tests/phase2/test_gate.py',
+  'common/tests/phase2/test_ops_rereview.py',
+  'common/tests/phase2/test_ops_rereview2.py'
+)
+& $resumePython -m pytest -p no:cacheprovider --basetemp C:\Users\s\AppData\Local\Temp\ai-trader-resume-final-c7d63f43fc6941369a8da2ab43d4e5a1 @resumeTargets -q
+```
+
+最終対象SHA256:
+- `aitrader/runner.py`: `2df7f92c0c13ef5a2b2070a769f0bf7e1b1e3b6dc889f3e9af50744b7f64c3e5`
+- `aitrader/runner_resume.py`: `8651db9f6b069a30706f78a93bf52f9428b20af763abde1fcf1c78983233f5ea`
+- `tests/test_runner_resume.py`: `60643d92a2b3dfe0f117d7aea463c15e91504d503f399a49a46c91da2ae7d2de`
+
+依頼hash: `6c5fe10bcabbb54cf83848833af0d0bd9ac12a2b77dc81cbf65098891d27fab5`。
