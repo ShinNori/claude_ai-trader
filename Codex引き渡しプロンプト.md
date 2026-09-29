@@ -67,37 +67,31 @@ ai-trader の作業フォルダで、〈Codex引き渡しプロンプト.md｜bu
 完了したら build-codex/README.md の末尾に「今回やったこと・テスト件数と結果・Claude に伝えたい点」を追記する。
 ```
 
-## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-29 08:55 工程5 再開契約 v2）
+## B. 今回の依頼（Claude が毎回書き換える。最終更新: 2026-09-29 09:17 第25回）
 
-**発行時刻: 2026-09-29 08:55 JST（Claude / Claude Code、作業フォルダ D:\work\ai-trader。見張り経由で公開）**
+**発行時刻: 2026-09-29 09:17 JST（Claude / Claude Code、作業フォルダ D:\work\ai-trader。見張り経由で公開）**
 ※ 自動連携は別枠（tools/automation/、auto チャネル）。この B には混ぜない。
 ※ 見張り経由の Codex は git とダッシュボード更新を行わない（Claude が代行）。作業ツリーは最新 HEAD 以降。
 
 ```
-今回の依頼: 工程 5 再開契約の改訂 v2（D16-R1: STOP・未照合の停止条件を BUY のみに限定、局所整合 6 点、managed-v1 限定）の再判定。採用なら再開経路を実装し Windows 実測する
+今回の依頼: 第25回 再開経路（D16 v2）の独立確認（バグ 0・反証 6 件全通過）の受領と、R25-01（Dropbox 配置に依存する既存試験 1 件の修正）
 
-一次資料: build-codex/RUNNER_RESUME_CONTRACT_DRAFT.md の「改訂 v2」節（Claude 作成、2026-09-29 08:55 JST）。08:53 の不採用理由 D16-R1 と局所整合 6 点への回答。
-- D16-R1: STOP_ACTIVE / STOP_STATE_UNKNOWN / UNRESOLVED_LEDGER は BUY のみ。SELL は所有・時刻・二承認・売却可能株数で判定し STOP 中も再開対象（gate の EXIT 規則に委ねる）。
-- 局所整合: E6 は「同 run の他 INTENT 候補・同銘柄」に限定、seq は所有情報の読取前から採り書込直前に照合、runs.manifest を同一トランザクションで更新、
-  C2 の元判定を resume.original_gate に保持、failure.json は SYSTEM_ERROR＋detail、既存 3 assert は managed-v1 限定で不変。§9 の 4 点は Codex 判断どおり。
-- 反証 13・20・9 を差替え、25〜27 を追加。
+一次資料: build-codex/RUNNER_RESUME_INDEPENDENT_REVIEW.md（Claude 作成、2026-09-29 09:17 JST）。対象 3 ファイルの sha256 は同報告に記載。
+判断 1 点は「契約と一致」。重大な不整合なし。新規: build-codex/tests/test_runner_resume_claude_contract.py（6 件、Claude 環境で 6 passed / 1.82 秒）。
 
-1. 改訂 v2 の実装可能性と既存契約との矛盾だけ確認し、採否を契約末尾に記載する。不採用なら不足点を 3 点以内で。
-2. 採用なら build-codex/aitrader/runner.py の「台帳だけに通知が存在」分岐を managed-v1 home に限って D16 の再開経路へ置き換え、
-   除外 view の写しと所有証拠の検査は新規 aitrader/runner_resume.py に置く。gate・ops・common は変更しない。legacy home は従来どおり停止。
-3. 試験を新規追加する（§8 の 1〜24（13・20・9 は差替え）と 25〜27）。例外注入は monkeypatch、DB は TEMP。
-4. Windows 実測 1 回: 新規試験＋runner/managed_stop/ledger/gate の関連試験。passed/skipped/failed/秒/環境を記録。全体は Codex の判断で 1 回。
-5. README 末尾に短く記録し、Claude 向け次回 B を必須 3 項目様式で保存・公開する。次に Claude に求めるのは再開経路の重要差分
-   （所有の証拠・除外 view・seq 照合・書込点・BUY/SELL の停止条件）の独立確認 1 点。
+1. R25-01（低）: tests/test_managed_stop.py::test_existing_home_and_dropbox_target_are_untouched が repo_root 配下のパスを「Dropbox を含む」と
+   仮定しており、D:\work では拒否されず失敗する。拒否対象を tmp_path/'Dropbox'/… のように明示的に Dropbox を含む一時パスに変える
+   （製品の Dropbox 拒否ガードは変えない）。修正後、同ファイルを Windows 実測。
+2. README 末尾に第25回の結果を短く記録し、Claude 向け次回 B を「引き渡し不要」で保存・公開する。工程 5 の Tier A はこれで区切り。
+   次工程（runner 接続・スナップショット永続化、Tier B、翌日予約）は共通指示.md のキューで別途起こす。
 
-編集範囲は build-codex/aitrader/runner.py（再開分岐のみ）、build-codex/aitrader/runner_resume.py（新規）、build-codex/tests/（新規）、契約文書、README、
-Claude_Opusキャッチボール.md。ops/・common/・gate・既存試験の期待値・合成データ・examples・Claude の新規試験・自分宛て MD は変更しない。
-既存試験の削除・skip・xfail・条件緩和は禁止。実API・実売買審査・LINE・証券接続・発注・使用率確認は行わない。自動再開・予約の自動解放は実装しない。
+編集範囲は tests/test_managed_stop.py の当該 1 試験、README、Claude_Opusキャッチボール.md。製品・他の既存試験の期待値・Claude の新規試験・自分宛て MD は変更しない。
+既存試験の削除・skip・xfail・条件緩和は禁止。実API・実売買審査・LINE・証券接続・発注・使用率確認は行わない。
 
-完了条件: 1 の採否記載、（採用時）2〜4、5 の保存・公開。不採用なら 1 と 5 のみ。
+完了条件: 1 の修正と実測、2 の記録・保存・公開。
 ```
 
-<!-- handoff-ready: 6c5fe10bcabbb54cf83848833af0d0bd9ac12a2b77dc81cbf65098891d27fab5 -->
+<!-- handoff-ready: d25af62b7a4ddd49e24d078a9a62fad8c0fa0355d3a782c5ce6bf48194967bf3 -->
 
 ---
 
@@ -156,5 +150,6 @@ Claude_Opusキャッチボール.md。ops/・common/・gate・既存試験の期
 | 2026-09-28 11:41 | （Claude）第22回: R21-01〜03 採用と D4 実装の独立確認（一致）。反証の期待値 1 件を D4 に合わせて更新、38 passed | 引き渡し不要（保存のみ・未公開）。工程 3 区切り |
 | 2026-09-29 08:46 | （Claude）工程5: 明示的な再開の契約案 D16-01〜06（Tier A: ops 変更なし、INTENT/CREATED・APPROVED の 2 状態） | RUNNER_RESUME_CONTRACT_DRAFT.md。Codex へ採否・実装・実測を依頼（公開） |
 | 2026-09-29 08:55 | （Claude）工程5: 再開契約の改訂 v2（STOP・未照合は BUY のみ、局所整合 6 点、managed-v1 限定）を追記し再判定を依頼 | D16-R1 に回答（公開） |
+| 2026-09-29 09:17 | （Claude）第25回: 明示的再開（D16 v2）実装の独立確認 | RUNNER_RESUME_INDEPENDENT_REVIEW.md。実装バグ 0。反証 6 件 6 passed。R25-01（低: Dropbox 配置依存の既存試験）を Codex へ依頼（公開） |
 
 ※ Cowork（このセッション）からの `tools/run_codex_build.*` 自動起動は、Anthropic 側のネットワーク方針で OpenAI に到達できず失敗する（2026-09-08 確認）。自動起動は則光さんの PC 上の Claude Code から行う。往復の自動化は `tools/pingpong.ps1`（`tools/PINGPONG.md` 参照、2026-09-09 追加）。
