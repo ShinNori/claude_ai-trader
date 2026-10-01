@@ -170,3 +170,22 @@ New Chat ＋ この文書が実質的な手動圧縮にあたる。自動圧縮�
 
 受領回数が 20 に達した。次の新チャットは `D:\work\ai-trader` で開き、本文書と 共通指示.md を読ませて再開する。回数は 21 から続ける（数え直さない）。
 現在地: 工程 3 の EXIT 生成契約は改訂 v6 まで（v5 の規則は Codex が採用可能と判定、v6 は入力元の明確化のみ）。Codex の再判定待ち。
+
+### N2602 への移行（2026-10-01 14:45 JST、N2601 の Claude Code 記載）
+
+則光の指示「N2602 の OrcaAi での開発に移行したい」。**「OrcaAi」が何を指すか（ツール名・フォルダ名・アカウント名）は N2601 側の資料に記載がなく未確認**。以下は OrcaAi の正体に依存しない手順。
+
+N2601 側で済ませたこと:
+- GitHub（master）と完全同期（最新 2b46c76 ＋ 本メモのコミット）。未コミットなし。
+- 見張りタスク「ai-trader handoff watch codex」を停止・登録解除（N2601 と N2602 の二重起動防止）。N2601 に戻すときは 共通指示.md §6 のコマンドで再登録する。
+- ダッシュボードの ai-trader を「他 PC 可」に更新。
+
+N2602 側で必要なこと（git では運ばれないもの）:
+1. `git clone https://github.com/ShinNori/claude_ai-trader.git D:\work\ai-trader`（Dropbox の外。改行は `.gitattributes` の `* -text` で変換されない）。
+2. Python: 関連試験は `PYTHONPATH=ops;build-codex`、`-p no:cacheprovider --basetemp <Dropbox 外>`。N2601 では Codex 同梱の CPython 3.12.14 を使っていた（`%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`）。N2602 に Codex が無い場合は Python 3.12 と pytest・duckdb を別途用意する。
+3. ダッシュボード用トークン `%USERPROFILE%\.dashboard_token`（1 行）を N2602 にも置く。値はチャット・コミットに書かない。node が必要（`dashboard_post.js`・`dashboard_next.js` は `D:\Desktop\ClaudeCode\00_dashboard\` にあり git 管理外。N2602 に同じフォルダが無ければ、その PC ではダッシュボード更新を省略し報告に明記する）。
+4. Codex を使うなら `%LOCALAPPDATA%\OpenAI\Codex\bin\<版hash>\codex.exe` を確認して見張りを dev チャネルで登録。Codex の自動更新のたびに再登録が要る。
+5. AI の記憶（Claude Code の memory）は PC ごとに別。最初のセッションで次を伝える: 報告末尾に JST 時刻とトークン残量／往復 1 回ごとに 1 コミット＋push／見張り経由の Codex は git・ダッシュボード不可で Claude が代行／同じ依頼を 2 台・2 経路で同時に走らせない。
+6. 最初に読むもの: `共通指示.md`（次の作業キュー）→ 本文書 → `build-codex/TEAM_WORKFLOW.md`。受領回数は 26 から。
+
+現在地: 工程 3（SELL 生成）と工程 5 Tier A（明示的再開）が完了。Codex 宛・Claude 宛の B はどちらも「引き渡し不要」。キュー #7 は則光の操作（実データ契約・実接続の認証・運転 PC）。Claude 側の次工程は「runner 接続とスナップショット・SPLIT 記録の永続化」の契約整理（キュー未登録。着手時に追加する）。
