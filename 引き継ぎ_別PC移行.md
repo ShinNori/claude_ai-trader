@@ -4,14 +4,14 @@
 
 ```
 N2601（これまで）                         N2602（これから）
-D:\work\ai-trader ──git push──▶ GitHub ShinNori/claude_ai-trader ──git clone──▶ D:\work\ai-trader
+D:\work\ai-trader ──git push──▶ GitHub ShinNori/nori_ai-trader ──git clone──▶ C:\dev\nori_ai-trader
   Claude Code の記憶(memory)は移らない ──▶ 本ファイル §4「引き継ぐルール」に全文を書いてある
   見張りタスク・実行状態(~/.ai-trader)・ダッシュボード用トークンは PC ごと ──▶ §1 で作り直す
 ```
 
 ## 1. 新しい PC の初期設定（1 回だけ）
 
-1. **clone**: `git clone https://github.com/ShinNori/claude_ai-trader.git D:\work\ai-trader`（Dropbox の外に置く。製品コード・自動連携に絶対パス依存は無いので場所は変えてよいが、文書は `D:\work\ai-trader` と書いている）。改行は `.gitattributes` の `* -text` で一切変換しない（生バイト hash に依存する試験があるため。`core.autocrlf` を有効にしても影響しない）。
+1. **clone**: `git clone https://github.com/ShinNori/nori_ai-trader.git C:\dev\nori_ai-trader`（Dropbox の外。製品コード・自動連携に絶対パス依存は無い。過去の文書に出てくる `D:\work\ai-trader` は N2601 の場所なので、N2602 では `C:\dev\nori_ai-trader` と読み替える）。改行は `.gitattributes` の `* -text` で一切変換しない（生バイト hash に依存する試験があるため。`core.autocrlf` を有効にしても影響しない）。
 2. **Python 3.12** と `pytest`・`duckdb`。N2601 では Codex 同梱の `%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`（CPython 3.12.14）を使っていた。`python` コマンドは Windows Store のスタブで動かないことがある。
 3. **動作確認**（リポジトリ直下で。DB と一時ファイルは必ず Dropbox 外）:
    ```powershell
@@ -57,13 +57,13 @@ D:\work\ai-trader ──git push──▶ GitHub ShinNori/claude_ai-trader ─�
 ## 4. 引き継ぐルール（N2601 の Claude の記憶から転記）
 
 - **報告の末尾に必ず 1 行**: `時刻: YYYY-MM-DD HH:MM JST ／ トークン残: …`。時刻は実測し推測しない。最後に「次に行いたいこと」を書く。
-- **git**: 往復 1 回ごとに 1 コミット。clone 運用では毎回 push。remote は GitHub `ShinNori/claude_ai-trader`、ブランチ `master`。コミット前に対象を列挙して確認し、ログ・DB・`.env`・トークンを含めない。
+- **git**: 往復 1 回ごとに 1 コミット。clone 運用では毎回 push。remote は GitHub `ShinNori/nori_ai-trader`（旧 `claude_ai-trader` には push しない）、ブランチ `master`。コミット前に対象を列挙して確認し、ログ・DB・`.env`・トークンを含めない。
 - **pytest** は必ず `-p no:cacheprovider --basetemp <Dropbox 外>`（Dropbox 内にキャッシュを作ると同期できないフォルダが残る）。
 - **N2601 の Codex 見張り実行の制約**（ツールが変われば当てはまらない可能性あり）: サンドボックスが `.git` を書けず外部送信もできないため、Codex は作業ツリーへの保存まで、commit/push とダッシュボード更新はレビュー側が代行していた。
 - 応答は日本語・結論先・図（構造や流れは枠線と矢印）・完了報告の形式は `C:\Users\<ユーザー>\.claude\CLAUDE.md` に従う。
 - 契約案を書く前に、関係する既存文書とコード（保存先・状態遷移・既存 API）を先に読み切る（読み落としで往復が 6 回に増えた反省）。
 
-## 5. 現在地（2026-10-02、最新コミットは本ファイルを追加したもの）
+## 5. 現在地（2026-10-02 時点。10-04 にリポジトリと N2602 の作業フォルダを変更 → §7）
 
 | 工程 | 状態 |
 |---|---|
@@ -79,8 +79,31 @@ D:\work\ai-trader ──git push──▶ GitHub ShinNori/claude_ai-trader ─�
 - 次にレビュー側が起こす工程（キュー未登録。着手時に 共通指示.md のキューへ追加）: **日次 runner への EXIT 生成の接続と、スナップショット・SPLIT 記録の永続化の契約整理**。
 - 則光の操作待ち（キュー #7）: 実データ契約・アカウント・原本の出所、実接続の認証許可、実運転 PC と稼働時間。
 
-## 6. Orca AI に最初に渡す一文（コピー用）
+## 6. Orca AI への指示（コピー用）
+
+N2602 で先に clone しておく: `git clone https://github.com/ShinNori/nori_ai-trader.git C:\dev\nori_ai-trader`
 
 ```text
-D:\work\ai-trader の 引き継ぎ_別PC移行.md と 共通指示.md を読み、役割分担（実装側・レビュー側）を割り当てたうえで、「次の作業キュー」に次工程（日次 runner への EXIT 生成の接続とスナップショット・SPLIT 記録の永続化の契約整理）を追加し、レビュー側の手番として既定値で進めてください。
+ai-trader の開発を N2602 で引き継いでください。
+
+- 作業フォルダ: C:\dev\nori_ai-trader（GitHub ShinNori/nori_ai-trader、ブランチ master）。旧リポジトリ claude_ai-trader と N2601 の D:\work\ai-trader では作業しない。文書中の D:\work\ai-trader は C:\dev\nori_ai-trader と読み替える。
+- 最初に読むもの: 引き継ぎ_別PC移行.md → 共通指示.md → build-codex/TEAM_WORKFLOW.md。
+- 役割: 実装側（製品実装・修正・統合試験）とレビュー側（未決契約の整理・独立反証・重要差分の確認）にエージェントを分けて割り当てる。同じ依頼を 2 つのエージェントや 2 台の PC で同時に走らせない。
+- 最初の作業: 共通指示.md の「次の作業キュー」に次工程「日次 runner への EXIT 生成の接続と、スナップショット・SPLIT 記録の永続化の契約整理」を追加し、レビュー側の手番として既定値で進める（受領回数は第 26 回、指摘番号は R26-xx から）。
+- 毎回守ること: 作業前に git pull、1 往復ごとに 1 コミットして push。報告の末尾に「時刻: YYYY-MM-DD HH:MM JST ／ トークン残: …」を 1 行付け、最後に次に行いたいことを書く。
+- 禁止: 実口座・証券サイト・実 LINE・実審査 LLM への接続、発注、秘密情報（.env・トークン）のコミット、common/ の編集、既存試験の削除・skip・xfail・条件緩和。確かめられないことは「未確認」と書く。
+- 判断が要るときは build-codex/QUESTIONS.md に質問を書いて止まる。
 ```
+
+## 7. 2026-10-04 の決定（N2601 との共有用記録）
+
+N2601 の Claude Code セッションで則光が指示した内容。N2601・N2602 のどちらで読んでも同じになるよう、ここに残す。
+
+| 項目 | 変更前 | 変更後 |
+|---|---|---|
+| GitHub リポジトリ | `ShinNori/claude_ai-trader` | **`ShinNori/nori_ai-trader`**（今後の開発はこちら。旧は履歴参照のみ、push しない） |
+| N2602 の作業フォルダ | （未定。文書上は `D:\work\ai-trader`） | **`C:\dev\nori_ai-trader`** |
+| N2601 の作業フォルダ | `D:\work\ai-trader` | 変更なし。remote を新リポジトリに切り替え済み（旧は `claude_ai-trader` という名前で参照用に残す） |
+| Orca AI への指示 | 一文のみ | §6 の指示文（新リポジトリ・新フォルダ・役割・禁止事項入り） |
+
+N2601 で続けて作業するときは `git -C D:\work\ai-trader pull` で最新にしてから始める。2 台で同時に作業しない（稼働 PC は N2602）。

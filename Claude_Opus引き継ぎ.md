@@ -181,7 +181,7 @@ N2601 側で済ませたこと:
 - ダッシュボードの ai-trader を「他 PC 可」に更新。
 
 N2602 側で必要なこと（git では運ばれないもの）:
-1. `git clone https://github.com/ShinNori/claude_ai-trader.git D:\work\ai-trader`（Dropbox の外。改行は `.gitattributes` の `* -text` で変換されない）。
+1. `git clone https://github.com/ShinNori/nori_ai-trader.git C:\dev\nori_ai-trader`（2026-10-04 変更: 新リポジトリと N2602 の作業フォルダ。Dropbox の外。改行は `.gitattributes` の `* -text` で変換されない）。
 2. Python: 関連試験は `PYTHONPATH=ops;build-codex`、`-p no:cacheprovider --basetemp <Dropbox 外>`。N2601 では Codex 同梱の CPython 3.12.14 を使っていた（`%USERPROFILE%\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`）。N2602 に Codex が無い場合は Python 3.12 と pytest・duckdb を別途用意する。
 3. ダッシュボード用トークン `%USERPROFILE%\.dashboard_token`（1 行）を N2602 にも置く。値はチャット・コミットに書かない。node が必要（`dashboard_post.js`・`dashboard_next.js` は `D:\Desktop\ClaudeCode\00_dashboard\` にあり git 管理外。N2602 に同じフォルダが無ければ、その PC ではダッシュボード更新を省略し報告に明記する）。
 4. Codex を使うなら `%LOCALAPPDATA%\OpenAI\Codex\bin\<版hash>\codex.exe` を確認して見張りを dev チャネルで登録。Codex の自動更新のたびに再登録が要る。
